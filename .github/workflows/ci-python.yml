@@ -136,4 +136,7 @@ jobs:
       - name: Build sdist and wheel
         run: python -m build
 
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/languages/dist
