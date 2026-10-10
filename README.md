@@ -42,6 +42,7 @@ argus scan terraform /my/infra
 argus scan all /my/project --fail-on high
 argus scan code /my/project --format sarif -o argus.sarif
 argus scan ml /my/ml-app
+argus scan malware /my/project
 argus compare baseline.json current.json --fail-on-new
 argus tools
 ```
@@ -71,6 +72,7 @@ Connect Cursor, VS Code, Claude Desktop, JetBrains, Windsurf, or any MCP-compati
 | **Ansible** | ansible-lint · KICS · Checkov |
 | **Container** | Trivy image scan |
 | **AI/ML** | Built-in rules — unsafe model load, LLM API keys, prompt injection, Gradio share |
+| **Malware** | Built-in heuristics — crypto miners, reverse shells, BAT/PS1 droppers, web shells (not AV) |
 
 ## MCP Tools (for AI clients)
 
@@ -84,6 +86,7 @@ Connect Cursor, VS Code, Claude Desktop, JetBrains, Windsurf, or any MCP-compati
 | `scan_terraform` | Deep Terraform scan (tfsec, tflint, validate, KICS) |
 | `scan_ansible` | Ansible playbook & role security scan |
 | `scan_ml` | AI/ML & LLM pipeline security (model load, API keys, prompts) |
+| `scan_malware` | Malware / backdoor / crypto-miner / malicious BAT-PS1 heuristics |
 | `scan_container` | Container image CVE scanning |
 | `scan_all` | Everything, in parallel |
 | `apply_fix` | Preview or apply a fix for one finding (user must ask — scans never auto-fix) |

@@ -24,6 +24,7 @@ class ScanType(str, Enum):
     IAC = "iac"
     CONTAINER = "container"
     ML = "ml"
+    MALWARE = "malware"
 
 
 @dataclass

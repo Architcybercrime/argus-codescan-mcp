@@ -11,6 +11,7 @@ Usage:
     argus scan terraform /path/to/tf
     argus scan ansible /path/to/playbooks
     argus scan ml /path/to/ml-project
+    argus scan malware /path/to/project
     argus scan all /path/to/project
     argus scan dast http://localhost:3000
     argus scan container nginx:latest
@@ -34,7 +35,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="argus",
         description=(
-            "Code security scanner — SAST, DAST, SCA, Secrets, IaC, Terraform, Ansible, ML/AI.\n"
+            "Code security scanner — SAST, DAST, SCA, Secrets, IaC, Terraform, Ansible, ML/AI, Malware.\n"
             "All scanners are open-source. No AI token or subscription needed for CLI use."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -126,6 +127,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="AI/ML security scan — unsafe model loading, LLM API keys, prompt injection (built-in)",
     )
     _add_common(ml_p)
+
+    malware_p = scan_sub.add_parser(
+        "malware",
+        help="Malware / backdoor / crypto-miner / BAT-PS1 heuristics (built-in, not antivirus)",
+    )
+    _add_common(malware_p)
 
     sca_p = scan_sub.add_parser("sca", help="Software Composition Analysis (dependencies)")
     _add_common(sca_p)
@@ -408,6 +415,11 @@ async def _run_scan(args: argparse.Namespace) -> int:
 
         results = [await run_ml_scan(args.target)]
 
+    elif scan_type == "malware":
+        from argus.tools.malware import run_malware_scan
+
+        results = [await run_malware_scan(args.target)]
+
     elif scan_type == "sca":
         from argus.tools.sca import run_all_sca
 
@@ -454,6 +466,7 @@ async def _run_scan(args: argparse.Namespace) -> int:
     elif scan_type == "all":
         from argus.tools.dast import run_all_dast
         from argus.tools.iac import run_all_iac, run_trivy_image
+        from argus.tools.malware import run_malware_scan
         from argus.tools.ml import run_ml_scan
         from argus.tools.sast import run_all_sast
         from argus.tools.sca import run_all_sca
@@ -465,6 +478,7 @@ async def _run_scan(args: argparse.Namespace) -> int:
             run_all_secrets(args.target, timeout=timeout),
             run_all_iac(args.target, timeout=timeout),
             run_ml_scan(args.target),
+            run_malware_scan(args.target),
             return_exceptions=True,
         )
         results = []
