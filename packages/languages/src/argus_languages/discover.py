@@ -30,6 +30,11 @@ EXT_MAP: dict[str, LanguageId] = {
     ".rs": "rust",
     ".tf": "terraform", ".tfvars": "terraform", ".hcl": "terraform",
     ".sh": "shell", ".bash": "shell", ".zsh": "shell",
+    ".bat": "batch", ".cmd": "batch",
+    ".ps1": "powershell", ".psm1": "powershell", ".psd1": "powershell",
+    ".vbs": "vbscript", ".vbe": "vbscript",
+    ".hta": "hta",
+    ".html": "html", ".htm": "html",
     ".sql": "sql",
     ".kt": "kotlin", ".kts": "kotlin",
     ".swift": "swift",
@@ -172,5 +177,19 @@ def discover_files(target: Path) -> list[ScannedFile]:
 
 SUPPORTED_LANGUAGES = sorted(
     set(EXT_MAP.values())
-    | {"terraform", "ansible", "docker", "kubernetes", "shell", "sql", "flutter", "dart"}
+    | {
+        "terraform",
+        "ansible",
+        "docker",
+        "kubernetes",
+        "shell",
+        "batch",
+        "powershell",
+        "vbscript",
+        "hta",
+        "html",
+        "sql",
+        "flutter",
+        "dart",
+    }
 )

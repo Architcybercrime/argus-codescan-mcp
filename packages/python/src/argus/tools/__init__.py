@@ -15,6 +15,7 @@ from argus.tools.iac import (
     run_trivy_config,
     run_trivy_image,
 )
+from argus.tools.malware import run_malware_scan
 from argus.tools.ml import run_ml_scan
 from argus.tools.sast import run_all_sast, run_bandit, run_eslint_security, run_semgrep
 from argus.tools.sca import run_all_sca, run_npm_audit, run_pip_audit, run_safety, run_trivy_fs
@@ -36,6 +37,7 @@ __all__ = [
     "run_all_sast",
     "run_native_languages",
     "run_ml_scan",
+    "run_malware_scan",
     # SCA
     "run_trivy_fs",
     "run_safety",

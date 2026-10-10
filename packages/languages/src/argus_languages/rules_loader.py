@@ -14,6 +14,7 @@ RULE_FILES = (
     "common.yaml",
     "database.yaml",
     "ml.yaml",
+    "malware.yaml",
     "java.yaml",
     "php.yaml",
     "terraform.yaml",

@@ -34,6 +34,7 @@ from argus.tools.iac import (
     run_trivy_config,
     run_trivy_image,
 )
+from argus.tools.malware import run_malware_scan
 from argus.tools.ml import run_ml_scan
 from argus.tools.sast import (
     run_all_sast,
@@ -365,6 +366,36 @@ async def list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
+            name="scan_malware",
+            description=(
+                "Scan source and scripts for malware / backdoor / crypto-miner heuristics: "
+                "XMRig and stratum mining, reverse shells, PowerShell download cradles, "
+                "BAT/CMD droppers, PHP/JSP web shells, persistence (Run keys, schtasks), "
+                "and LOLBin abuse (mshta, regsvr32). Built-in static rules — not antivirus."
+            ),
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": "Path to project directory or file",
+                    },
+                    "format": {
+                        "type": "string",
+                        "enum": ["markdown", "json", "sarif"],
+                        "description": "Output format (default: markdown)",
+                        "default": "markdown",
+                    },
+                    "timeout": {
+                        "type": "integer",
+                        "description": "Reserved for future external malware scanners (default: 300)",
+                        "default": 300,
+                    },
+                },
+                "required": ["target"],
+            },
+        ),
+        types.Tool(
             name="scan_all",
             description=(
                 "Run a comprehensive security scan combining SAST, SCA, secret scanning, IaC checks, "
@@ -553,6 +584,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
             return await _handle_scan_ansible(arguments)
         elif name == "scan_ml":
             return await _handle_scan_ml(arguments)
+        elif name == "scan_malware":
+            return await _handle_scan_malware(arguments)
         elif name == "scan_container":
             return await _handle_scan_container(arguments)
         elif name == "scan_all":
@@ -864,6 +897,24 @@ async def _handle_scan_ml(args: dict[str, Any]) -> list[types.TextContent]:
     )
 
 
+async def _handle_scan_malware(args: dict[str, Any]) -> list[types.TextContent]:
+    timer = ScanTimer()
+    target = args["target"]
+    fmt = args.get("format", "markdown")
+
+    result = await run_malware_scan(target)
+    report = AggregatedReport(target=target, results=[result])
+    return await _finish_scan(
+        report,
+        scan_type="malware",
+        timer=timer,
+        fmt=fmt,
+        fail_on=args.get("fail_on"),
+        include_raw_json=True,
+        target_path=target,
+    )
+
+
 async def _handle_scan_container(args: dict[str, Any]) -> list[types.TextContent]:
     timer = ScanTimer()
     image = args["image"]
@@ -897,6 +948,7 @@ async def _handle_scan_all(args: dict[str, Any]) -> list[types.TextContent]:
         run_all_secrets(target, timeout=timeout),
         run_all_iac(target, timeout=timeout),
         run_ml_scan(target),
+        run_malware_scan(target),
     ]
     code_scan_results = await asyncio.gather(*code_tasks, return_exceptions=True)
     for batch in code_scan_results:

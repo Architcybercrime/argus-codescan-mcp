@@ -156,6 +156,27 @@ Included in `argus scan all` and MCP `scan_all`.
 
 ---
 
+### 7. Malware / backdoor / crypto-miner heuristics
+
+| Item | Location |
+|------|----------|
+| Rule pack | `packages/languages/.../bundled_rules/malware.yaml` |
+| Scanner | `packages/python/src/argus/tools/malware.py` |
+| CLI | `argus scan malware .` |
+| MCP tool | `scan_malware` |
+
+**Rules include:** XMRig / stratum mining, reverse shells, PowerShell download cradles, BAT/CMD droppers (`certutil`, `bitsadmin`), PHP/JSP web shells, Windows persistence (Run keys, schtasks), LOLBins (`mshta`, `regsvr32`), Defender disable attempts.
+
+Also scans `.bat`, `.cmd`, `.ps1`, `.vbs`, `.hta` via extended language discovery.
+
+```bash
+argus scan malware ./my-project
+```
+
+Included in `argus scan all` and MCP `scan_all`. **Not antivirus** — static pattern heuristics only.
+
+---
+
 ## Planned (next milestones)
 
 ### CI / DevSecOps
@@ -238,6 +259,9 @@ argus scan code .
 
 # AI/ML & LLM pipeline security
 argus scan ml .
+
+# Malware / backdoor / crypto-miner heuristics
+argus scan malware .
 ```
 
 ---

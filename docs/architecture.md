@@ -57,6 +57,7 @@ The authoritative MCP server implementation. All other clients are thin wrappers
 | `formatters/sarif.py` | SARIF 2.1.0 export |
 | `tools/sast.py` | Semgrep, Bandit, ESLint-security, argus-languages |
 | `tools/ml.py` | Built-in AI/ML & LLM pipeline rules |
+| `tools/malware.py` | Built-in malware / backdoor / crypto-miner heuristics |
 | `tools/dast.py` | OWASP ZAP (Docker + local), Nikto |
 | `tools/sca.py` | Trivy fs, Safety, pip-audit, npm audit |
 | `tools/secrets.py` | Gitleaks, detect-secrets, TruffleHog |
