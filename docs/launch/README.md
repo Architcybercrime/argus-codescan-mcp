@@ -5,6 +5,7 @@ Materials to promote Argus as open source.
 | File | Use |
 |------|-----|
 | [show-hn.md](show-hn.md) | Copy/paste for [Show HN](https://news.ycombinator.com/submit) |
+| [viral-contributors.md](viral-contributors.md) | 7-day viral plan + social posts + contributor funnel |
 | [awesome-mcp-submission.md](awesome-mcp-submission.md) | PR text for awesome-mcp-servers and similar lists |
 | [github-release-v0.2.0.md](github-release-v0.2.0.md) | GitHub Release notes for v0.2.0 |
 
