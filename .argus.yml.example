@@ -13,7 +13,12 @@ min_severity: low
 # baseline: .argus/baseline.json
 
 # Paths to skip (glob patterns)
+# Test files and fixtures may contain intentional malware samples
+# that trigger malware heuristics. Exclude them to reduce false positives.
 exclude_paths:
+  - "**/tests/**"
+  - "**/test_*.py"
+  - "**/fixtures/**"
   - "tests/fixtures/**"
   - "**/node_modules/**"
   - "**/.venv/**"
