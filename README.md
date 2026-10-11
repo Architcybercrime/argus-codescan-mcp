@@ -491,6 +491,7 @@ argus-codescan-mcp/
 | [Contributing](CONTRIBUTING.md) | Add scanners, clients, and fixes |
 | [Add a YAML rule](docs/contributing-rules.md) | 5-minute guide to extend malware/ML/DB rules |
 | [Security Policy](SECURITY.md) | Report vulnerabilities |
+[MCP Prompt Cookbook](docs/mcp-prompt-cookbook.md) — Eight example prompts for Argus scans.
 
 ---
 
