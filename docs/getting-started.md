@@ -301,3 +301,10 @@ argus-scan --check
 # Install Docker and pull the ZAP image:
 docker pull ghcr.io/zaproxy/zaproxy:stable
 ```
+## Malware Scanning and Test Fixtures
+
+Malware heuristics may flag suspicious sample strings intentionally included in unit tests, such as reverse-shell examples in `test_malware.py`. These findings may be expected in test code rather than evidence of an actual malware infection.
+
+Configure `exclude_paths` in your `.argus.yml` policy to exclude test directories, test files, and fixture directories when appropriate. The example policy includes patterns for `**/tests/**`, `**/test_*.py`, and `**/fixtures/**`.
+
+When running `argus scan malware` in CI, verify that the scanner applies the configured exclusions. Review exclusions carefully to avoid hiding genuine malware findings.
