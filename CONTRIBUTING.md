@@ -8,12 +8,15 @@ Thank you for helping make security tooling more accessible! Contributions of al
 
 | Type | Examples |
 |------|---------|
+| **YAML security rule** | Add a pattern to `bundled_rules/*.yaml` — see [docs/contributing-rules.md](docs/contributing-rules.md) |
 | **New scanner** | Add support for a new SAST/DAST/SCA/secret/IaC tool |
 | **New language client** | Rust, Java/Maven, Ruby gem, .NET NuGet package |
 | **Bug fix** | Fix a parsing issue, incorrect severity mapping, crash |
 | **Docs** | Improve setup guides, add examples, fix typos |
 | **Tests** | Add test cases for edge cases or new tools |
 | **CI/CD** | Improve GitHub Actions workflows |
+
+**Fastest first PR:** add a malware/ML/database rule in YAML + one test ([5-minute guide](docs/contributing-rules.md)).
 
 ---
 
