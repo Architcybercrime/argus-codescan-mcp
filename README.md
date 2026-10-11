@@ -486,6 +486,7 @@ argus-codescan-mcp/
 | [Architecture](docs/architecture.md) | How Argus works under the hood |
 | [API Reference](docs/api-reference.md) | All MCP tools, parameters, schemas |
 | [Agent Upload](docs/AGENT-UPLOAD.md) | Cloud dashboard upload & API keys |
+| [Privacy & data](docs/privacy-and-data.md) | What stays local vs cloud/CI egress |
 | [Tool Setup](docs/tool-setup.md) | Install every scanner on every platform |
 | [Contributing](CONTRIBUTING.md) | Add scanners, clients, and fixes |
 | [Security Policy](SECURITY.md) | Report vulnerabilities |
