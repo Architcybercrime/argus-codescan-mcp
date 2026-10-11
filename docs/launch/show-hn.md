@@ -3,13 +3,13 @@
 ## Title (pick one)
 
 **Option A (recommended):**  
-`Show HN: Argus – open-source security scanner with MCP for your IDE (SAST, SCA, secrets, SARIF)`
+`Show HN: Argus – open-source security scanner + malware heuristics (MCP, SARIF, YAML rules)`
 
-**Option B (shorter):**  
-`Show HN: Argus – one CLI + MCP server for 20+ security scanners, no vendor lock-in`
+**Option B (contribute angle):**  
+`Show HN: Argus – local DevSecOps scanner you can extend with YAML rules (MCP/CLI)`
 
-**Option C (CI angle):**  
-`Show HN: Argus – local DevSecOps scanner with SARIF export and PR baseline diff`
+**Option C (shorter):**  
+`Show HN: Argus – one CLI + MCP for 20+ scanners, plus malware/miner detection`
 
 ---
 
@@ -32,12 +32,15 @@ Hi HN — I built **Argus**, an open-source security scanner that orchestrates 2
 - **CLI** — `argus scan all .` for CI and terminals
 - **MCP** — `argus mcp` so your AI assistant can run scans via natural language
 - **Fix on request** — scans never auto-modify code; fixes only when you ask
-- **New in v0.2:** SARIF export (GitHub Code Scanning), `.argus.yml` policy, baseline diff for PRs, secret remediation playbooks, DB static rules
+- **New:** `argus scan malware` — crypto miners, reverse shells, BAT/PS1 droppers, web shells (heuristics, not AV)
+- **v0.2:** SARIF (GitHub Code Scanning), `.argus.yml` policy, baseline diff, secret remediation, DB rules
+- **Contribute:** most new checks are YAML rule packs under `bundled_rules/` — good first PRs welcome
 
 **Quick start:**
 
 ```bash
-pip install argus-scan
+pip install -U argus-scan
+argus scan malware .
 argus scan all . --fail-on high
 argus scan code . --format sarif -o argus.sarif   # GitHub Security tab
 ```
@@ -62,9 +65,9 @@ npx argus-codescan scan all .
 Repo: https://github.com/argus-code-scanning/argus-codescan-mcp  
 Docs: https://github.com/argus-code-scanning/argus-codescan-mcp/blob/main/docs/features-roadmap.md
 
-MIT licensed. Feedback and contributors welcome — especially on MCP tool UX and CI integrations.
+MIT licensed. Looking for contributors: add a malware/PII/language rule in YAML + a small test. Label: good first issue.
 
-What would you want next: live DB audit, official GitHub Action marketplace listing, or more language rule packs?
+What would you want next: more malware rules, official GitHub Action, or PII/GDPR packs?
 
 ---
 
