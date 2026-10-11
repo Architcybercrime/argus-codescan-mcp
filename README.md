@@ -489,6 +489,7 @@ argus-codescan-mcp/
 | [Privacy & data](docs/privacy-and-data.md) | What stays local vs cloud/CI egress |
 | [Tool Setup](docs/tool-setup.md) | Install every scanner on every platform |
 | [Contributing](CONTRIBUTING.md) | Add scanners, clients, and fixes |
+| [Add a YAML rule](docs/contributing-rules.md) | 5-minute guide to extend malware/ML/DB rules |
 | [Security Policy](SECURITY.md) | Report vulnerabilities |
 
 ---
@@ -496,6 +497,7 @@ argus-codescan-mcp/
 ## Contributing
 
 All contributions welcome — new scanners, new language clients, bug fixes, docs.
+Easiest start: [add a YAML security rule](docs/contributing-rules.md) (good first issues welcome).
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
