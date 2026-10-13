@@ -1,0 +1,8 @@
+# PII (Personally Identifiable Information) detection rules
+
+- id: pii-email-in-logs
+  title: Potential PII logged via logger (email address in log statement)
+  severity: medium
+  pattern: '(?:logger|log|logging)\.(?:debug|info|warning|error|exception|log)\s*\(\s*(?:f["''].*\{[^}]*email|.*(?:user\.email|account\.email|\bemail\b))'
+  flags: [i]
+  languages: [python, javascript, typescript]
