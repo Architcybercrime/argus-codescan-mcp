@@ -545,6 +545,24 @@ async def list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
+            name="get_fix_plan",
+            description=(
+                "Build a read-only remediation plan from scan JSON. Group related findings "
+                "by scan type, scanner and rule, and prioritise groups by severity. "
+                "Does not run scanners, modify files or call external services."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "scan_result_json": {
+                        "type": "string",
+                        "description": "JSON string of a previous AggregatedReport",
+                    },
+                },
+                "required": ["scan_result_json"],
+            },
+        ),
+        types.Tool(
             name="compare_scans",
             description=(
                 "Compare two scan JSON reports (baseline vs current) and return new, fixed, "
@@ -678,6 +696,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
             return await _handle_get_scan_report(arguments)
         elif name == "compare_scans":
             return await _handle_compare_scans(arguments)
+        elif name == "get_fix_plan":
+            return await _handle_get_fix_plan(arguments)
         elif name == "apply_fix":
             return await _handle_apply_fix(arguments)
         else:
@@ -1259,6 +1279,19 @@ async def _handle_get_scan_report(args: dict[str, Any]) -> list[types.TextConten
 
     md = format_markdown_report(data)
     return [types.TextContent(type="text", text=md)]
+
+
+async def _handle_get_fix_plan(args: dict[str, Any]) -> list[types.TextContent]:
+    from argus.remediation.plan import build_fix_plan
+
+    raw = args.get("scan_result_json")
+    if not isinstance(raw, str):
+        return [types.TextContent(type="text", text="Invalid input: scan_result_json must be a string")]
+    try:
+        plan = build_fix_plan(json.loads(raw))
+    except (ValueError, TypeError) as exc:
+        return [types.TextContent(type="text", text=f"Invalid scan report: {exc}")]
+    return [types.TextContent(type="text", text=json.dumps(plan, indent=2))]
 
 
 async def _handle_compare_scans(args: dict[str, Any]) -> list[types.TextContent]:

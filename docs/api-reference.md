@@ -224,6 +224,53 @@ Markdown table showing tool name, category, install status, and install command.
 
 ---
 
+## `get_fix_plan`
+
+Build a structured remediation plan from a previous aggregated scan report.
+This tool processes the supplied JSON in memory without running scanners,
+modifying files or calling external services.
+
+### Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `scan_result_json` | `string` | Yes | JSON string containing an AggregatedReport with a `results` array and a `findings` array in each result. |
+
+### Example
+
+```json
+{
+  "name": "get_fix_plan",
+  "arguments": {
+    "scan_result_json": "{\"target\":\"/project\",\"results\":[{\"tool\":\"semgrep\",\"scan_type\":\"sast\",\"findings\":[{\"title\":\"SQL injection\",\"rule_id\":\"sql-injection\",\"severity\":\"high\",\"file\":\"app.py\",\"line\":12,\"fix_guidance\":\"Use parameterised queries.\"}]}]}"
+  }
+}
+```
+
+### Response
+
+The response text contains a JSON object with `target`, `summary`, `groups` and
+`warnings`. The summary counts `total_findings` and `fix_groups`.
+
+Each group contains a one-based `priority`, `severity`, `scan_type`, `tool`,
+`rule_id`, `title`, `finding_count`, `locations`, `fix_guidance` and `references`.
+Findings are grouped by scan type, scanner and rule identifier, with the title
+used when no rule identifier is present. The group takes its highest finding
+severity. Groups are ordered critical, high, medium, low, info and unknown, with
+scan type, scanner, rule and title breaking ties. Unrecognised severity strings
+are treated as unknown.
+
+Locations retain file, line and column values for every occurrence. Existing
+guidance and references are collected without duplicates; secret findings without
+guidance use the existing rotation checklist. No general fix text is invented
+when a scanner provides none. Warnings preserve scan errors and unavailable-tool
+notices so an empty plan does not hide incomplete scan coverage.
+
+Malformed reports return an explanatory validation message. The report must be
+an aggregated report rather than a single finding or scanner result.
+
+---
+
 ## `get_scan_report`
 
 Reformat a raw JSON scan result as Markdown.
