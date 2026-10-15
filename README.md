@@ -133,7 +133,13 @@ argus scan code . --format sarif -o argus.sarif --fail-on high
 # MCP: scan_sast / scan_all with format: "sarif"
 ```
 
-Upload in GitHub Actions (see `.github/workflows/argus-sarif.yml`):
+Upload in GitHub Actions (see `.github/workflows/argus-sarif.yml`). Pull requests scan only the files changed in the diff, and fall back to a full scan when more than 50 files changed:
+
+```bash
+argus ci pr-paths --base "$BASE_SHA" --limit 50 -o scan-paths.txt
+argus scan sast . --paths-file scan-paths.txt --format sarif -o sast.sarif
+argus scan secrets . --paths-file scan-paths.txt --format sarif -o secrets.sarif
+```
 
 ```yaml
 - run: pip install argus-scan && argus scan code . --format sarif -o argus.sarif

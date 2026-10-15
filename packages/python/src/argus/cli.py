@@ -17,6 +17,7 @@ Usage:
     argus scan container nginx:latest
     argus tools        # list installed scanners
     argus mcp          # start MCP server (for AI clients)
+    argus ci pr-paths --base <sha> --limit 50 -o scan-paths.txt
 """
 
 from __future__ import annotations
@@ -27,7 +28,7 @@ import json
 import sys
 from pathlib import Path
 
-from argus.models import AggregatedReport
+from argus.models import AggregatedReport, ScanResult
 from argus.utils import format_markdown_report, is_tool_available
 
 
@@ -49,9 +50,23 @@ def build_parser() -> argparse.ArgumentParser:
     scan_sub = scan_p.add_subparsers(dest="scan_type", metavar="type")
 
     # Common flags shared by most scan subcommands
-    def _add_common(p: argparse.ArgumentParser, has_target: bool = True) -> None:
+    def _add_common(
+        p: argparse.ArgumentParser,
+        has_target: bool = True,
+        paths_file: bool = True,
+    ) -> None:
         if has_target:
             p.add_argument("target", help="Path to file, directory, URL, or image to scan")
+        if paths_file:
+            p.add_argument(
+                "--paths-file",
+                metavar="FILE",
+                help=(
+                    "Scan each path in FILE (one per line) instead of the whole target. "
+                    "Blank lines and # comments are ignored. The target is still used "
+                    "to discover .argus.yml."
+                ),
+            )
         p.add_argument(
             "--format",
             "-f",
@@ -159,10 +174,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     dast_p = scan_sub.add_parser("dast", help="Dynamic Application Security Testing (live URL)")
-    _add_common(dast_p)
+    _add_common(dast_p, paths_file=False)
 
     ctr_p = scan_sub.add_parser("container", help="Container image vulnerability scan")
-    _add_common(ctr_p)
+    _add_common(ctr_p, paths_file=False)
 
     all_p = scan_sub.add_parser("all", help="Run all applicable scans")
     _add_common(all_p)
@@ -190,6 +205,45 @@ def build_parser() -> argparse.ArgumentParser:
         "--fail-on-new",
         action="store_true",
         help="Exit 1 if any new findings exist vs baseline",
+    )
+
+    # ── ci ──────────────────────────────────────────────────────────────────
+    ci_p = sub.add_parser("ci", help="Helpers for CI jobs")
+    ci_sub = ci_p.add_subparsers(dest="ci_command", metavar="command")
+    pr_paths_p = ci_sub.add_parser(
+        "pr-paths",
+        help="List changed files for a pull request scan (git diff), or fall back to a full scan",
+    )
+    pr_paths_p.add_argument(
+        "--base", required=True, help="Base git revision (pull request base SHA)"
+    )
+    pr_paths_p.add_argument("--head", default="HEAD", help="Head git revision (default: HEAD)")
+    pr_paths_p.add_argument(
+        "--limit",
+        type=int,
+        default=50,
+        help="Fall back to a full scan when more than this many files changed (default: 50)",
+    )
+    pr_paths_p.add_argument(
+        "--full-target",
+        default=".",
+        help="Path written when falling back to a full scan (default: .)",
+    )
+    pr_paths_p.add_argument(
+        "--repo",
+        default=".",
+        help="Git repository root (default: .)",
+    )
+    pr_paths_p.add_argument(
+        "--output",
+        "-o",
+        metavar="FILE",
+        help="Write newline-separated scan paths to FILE",
+    )
+    pr_paths_p.add_argument(
+        "--github-output",
+        metavar="FILE",
+        help="Append mode and changed_count to a GitHub Actions output file",
     )
 
     # ── tools ───────────────────────────────────────────────────────────────
@@ -352,6 +406,118 @@ def _emit(report_dict: dict, fmt: str, output_file: str | None, min_sev: str, fa
 # ── Scan runners ──────────────────────────────────────────────────────────────
 
 
+async def _dispatch_scan(
+    scan_type: str,
+    target: str,
+    timeout: int,
+    tools: list[str] | None,
+    semgrep_cfg: str,
+    args: argparse.Namespace,
+) -> list[ScanResult] | None:
+    """Run one scan type against a single target. Returns None for an unknown type."""
+    if scan_type == "sast":
+        from argus.tools.sast import run_all_sast, run_bandit, run_eslint_security, run_semgrep
+
+        if tools:
+            tasks: list = []
+            if "argus-languages" in tools or "native" in tools:
+                from argus.tools.code import run_native_languages
+
+                tasks.append(run_native_languages(target))
+            if "semgrep" in tools:
+                tasks.append(run_semgrep(target, config=semgrep_cfg, timeout=timeout))
+            if "bandit" in tools:
+                tasks.append(run_bandit(target, timeout=timeout))
+            if "eslint" in tools:
+                tasks.append(run_eslint_security(target, timeout=timeout))
+            return list(await asyncio.gather(*tasks))
+        return await run_all_sast(target, semgrep_config=semgrep_cfg, timeout=timeout)
+
+    if scan_type == "code":
+        from argus.tools.code import run_native_languages
+
+        return [await run_native_languages(target)]
+
+    if scan_type == "ml":
+        from argus.tools.ml import run_ml_scan
+
+        return [await run_ml_scan(target)]
+
+    if scan_type == "malware":
+        from argus.tools.malware import run_malware_scan
+
+        return [await run_malware_scan(target)]
+
+    if scan_type == "sca":
+        from argus.tools.sca import run_all_sca
+
+        return await run_all_sca(target, timeout=timeout)
+
+    if scan_type == "secrets":
+        from argus.tools.secrets import run_all_secrets
+
+        return await run_all_secrets(target, timeout=timeout)
+
+    if scan_type == "iac":
+        from argus.tools.iac import run_all_iac, run_checkov
+
+        if getattr(args, "framework", None):
+            return [await run_checkov(target, framework=args.framework, timeout=timeout)]
+        return await run_all_iac(target, timeout=timeout)
+
+    if scan_type == "terraform":
+        from argus.tools.terraform import run_all_terraform
+
+        return await run_all_terraform(target, timeout=timeout, tools=tools)
+
+    if scan_type == "ansible":
+        from argus.tools.ansible import run_all_ansible
+
+        return await run_all_ansible(
+            target,
+            timeout=timeout,
+            tools=tools,
+            ansible_lint_profile=getattr(args, "profile", "safety"),
+        )
+
+    if scan_type == "dast":
+        from argus.tools.dast import run_all_dast
+
+        return await run_all_dast(target, timeout=max(timeout, 600))
+
+    if scan_type == "container":
+        from argus.tools.iac import run_trivy_image
+
+        return [await run_trivy_image(target, timeout=timeout)]
+
+    if scan_type == "all":
+        from argus.tools.iac import run_all_iac
+        from argus.tools.malware import run_malware_scan
+        from argus.tools.ml import run_ml_scan
+        from argus.tools.sast import run_all_sast
+        from argus.tools.sca import run_all_sca
+        from argus.tools.secrets import run_all_secrets
+
+        batches = await asyncio.gather(
+            run_all_sast(target, timeout=timeout),
+            run_all_sca(target, timeout=timeout),
+            run_all_secrets(target, timeout=timeout),
+            run_all_iac(target, timeout=timeout),
+            run_ml_scan(target),
+            run_malware_scan(target),
+            return_exceptions=True,
+        )
+        results: list[ScanResult] = []
+        for batch in batches:
+            if isinstance(batch, list):
+                results.extend(batch)
+            elif not isinstance(batch, BaseException):
+                results.append(batch)
+        return results
+
+    return None
+
+
 async def _run_scan(args: argparse.Namespace) -> int:
     from argus.cloud_upload import ScanTimer, is_cloud_upload_enabled, upload_scan_report
     from argus.compare import compare_reports, report_from_new_findings_only
@@ -384,121 +550,46 @@ async def _run_scan(args: argparse.Namespace) -> int:
     if policy.semgrep_config != "auto":
         semgrep_cfg = policy.semgrep_config
 
-    print(f"Running {scan_type.upper()} scan on: {args.target}", file=sys.stderr)
+    from argus.pr_scan import merge_results_by_tool, read_paths_file
 
-    if scan_type == "sast":
-        from argus.tools.sast import run_all_sast, run_bandit, run_eslint_security, run_semgrep
-
-        if tools:
-            tasks: list = []
-            if "argus-languages" in tools or "native" in tools:
-                from argus.tools.code import run_native_languages
-
-                tasks.append(run_native_languages(args.target))
-            if "semgrep" in tools:
-                tasks.append(run_semgrep(args.target, config=semgrep_cfg, timeout=timeout))
-            if "bandit" in tools:
-                tasks.append(run_bandit(args.target, timeout=timeout))
-            if "eslint" in tools:
-                tasks.append(run_eslint_security(args.target, timeout=timeout))
-            results = await asyncio.gather(*tasks)
-        else:
-            results = await run_all_sast(args.target, semgrep_config=semgrep_cfg, timeout=timeout)
-
-    elif scan_type == "code":
-        from argus.tools.code import run_native_languages
-
-        results = [await run_native_languages(args.target)]
-
-    elif scan_type == "ml":
-        from argus.tools.ml import run_ml_scan
-
-        results = [await run_ml_scan(args.target)]
-
-    elif scan_type == "malware":
-        from argus.tools.malware import run_malware_scan
-
-        results = [await run_malware_scan(args.target)]
-
-    elif scan_type == "sca":
-        from argus.tools.sca import run_all_sca
-
-        results = await run_all_sca(args.target, timeout=timeout)
-
-    elif scan_type == "secrets":
-        from argus.tools.secrets import run_all_secrets
-
-        results = await run_all_secrets(args.target, timeout=timeout)
-
-    elif scan_type == "iac":
-        from argus.tools.iac import run_all_iac, run_checkov
-
-        if getattr(args, "framework", None):
-            results = [await run_checkov(args.target, framework=args.framework, timeout=timeout)]
-        else:
-            results = await run_all_iac(args.target, timeout=timeout)
-
-    elif scan_type == "terraform":
-        from argus.tools.terraform import run_all_terraform
-
-        results = await run_all_terraform(args.target, timeout=timeout, tools=tools)
-
-    elif scan_type == "ansible":
-        from argus.tools.ansible import run_all_ansible
-
-        results = await run_all_ansible(
-            args.target,
-            timeout=timeout,
-            tools=tools,
-            ansible_lint_profile=getattr(args, "profile", "safety"),
+    paths_file = getattr(args, "paths_file", None)
+    if paths_file:
+        try:
+            paths = read_paths_file(Path(paths_file))
+        except FileNotFoundError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+        report_target = f"{args.target} ({len(paths)} path(s))"
+        print(
+            f"Running {scan_type.upper()} scan on {len(paths)} path(s) from {paths_file}",
+            file=sys.stderr,
         )
+    else:
+        paths = [args.target]
+        report_target = args.target
+        print(f"Running {scan_type.upper()} scan on: {args.target}", file=sys.stderr)
 
-    elif scan_type == "dast":
+    results: list[ScanResult] = []
+    for path in paths:
+        batch = await _dispatch_scan(scan_type, path, timeout, tools, semgrep_cfg, args)
+        if batch is None:
+            print(f"Unknown scan type: {scan_type}", file=sys.stderr)
+            return 2
+        results.extend(batch)
+
+    if paths_file:
+        results = merge_results_by_tool(results)
+
+    if scan_type == "all":
         from argus.tools.dast import run_all_dast
-
-        results = await run_all_dast(args.target, timeout=max(timeout, 600))
-
-    elif scan_type == "container":
         from argus.tools.iac import run_trivy_image
 
-        results = [await run_trivy_image(args.target, timeout=timeout)]
-
-    elif scan_type == "all":
-        from argus.tools.dast import run_all_dast
-        from argus.tools.iac import run_all_iac, run_trivy_image
-        from argus.tools.malware import run_malware_scan
-        from argus.tools.ml import run_ml_scan
-        from argus.tools.sast import run_all_sast
-        from argus.tools.sca import run_all_sca
-        from argus.tools.secrets import run_all_secrets
-
-        batches = await asyncio.gather(
-            run_all_sast(args.target, timeout=timeout),
-            run_all_sca(args.target, timeout=timeout),
-            run_all_secrets(args.target, timeout=timeout),
-            run_all_iac(args.target, timeout=timeout),
-            run_ml_scan(args.target),
-            run_malware_scan(args.target),
-            return_exceptions=True,
-        )
-        results = []
-        for batch in batches:
-            if isinstance(batch, list):
-                results.extend(batch)
-            elif not isinstance(batch, BaseException):
-                results.append(batch)
-
         if getattr(args, "url", None):
-            dast = await run_all_dast(args.url, timeout=600)
-            results.extend(dast)
+            results.extend(await run_all_dast(args.url, timeout=600))
         if getattr(args, "image", None):
-            ctr = await run_trivy_image(args.image, timeout=timeout)
-            results.append(ctr)
-    else:
-        print(f"Unknown scan type: {scan_type}", file=sys.stderr)
-        return 2
+            results.append(await run_trivy_image(args.image, timeout=timeout))
 
-    report = AggregatedReport(target=args.target, results=list(results))
+    report = AggregatedReport(target=report_target, results=results)
     report_dict = apply_policy(report.to_dict(), policy)
 
     baseline_path = getattr(args, "baseline", None) or policy.baseline
@@ -542,6 +633,36 @@ async def _run_scan(args: argparse.Namespace) -> int:
             print(f"Cloud upload failed: {exc}", file=sys.stderr)
 
     return _emit(report_dict, fmt, out_file, min_sev, fail_on)
+
+
+def _cmd_pr_paths(args: argparse.Namespace) -> int:
+    import subprocess
+
+    from argus.pr_scan import format_scope, resolve_pr_scan_scope, write_github_output
+
+    repo = Path(args.repo)
+    try:
+        scope = resolve_pr_scan_scope(
+            repo,
+            args.base,
+            args.head,
+            limit=args.limit,
+            full_target=args.full_target,
+        )
+    except subprocess.CalledProcessError as exc:
+        detail = exc.stderr.decode(errors="replace").strip() if exc.stderr else str(exc)
+        print(f"git diff failed: {detail}", file=sys.stderr)
+        return 2
+
+    sys.stdout.write(format_scope(scope))
+    if args.output:
+        body = "\n".join(scope.paths)
+        if body:
+            body += "\n"
+        Path(args.output).write_text(body, encoding="utf-8")
+    if args.github_output:
+        write_github_output(Path(args.github_output), scope)
+    return 0
 
 
 def _cmd_compare(args: argparse.Namespace) -> int:
@@ -622,7 +743,9 @@ def _cmd_tools() -> None:
         f"  {green}✔{reset}  {'argus-languages':<20} Multi-language code (Java, PHP, Terraform, Ansible, …)"
     )
     print("       pip install argus-languages   or   argus scan code <path>")
-    print(f"  {green}✔{reset}  {'argus-ml':<20} AI/ML & LLM pipeline security (model load, API keys, prompts)")
+    print(
+        f"  {green}✔{reset}  {'argus-ml':<20} AI/ML & LLM pipeline security (model load, API keys, prompts)"
+    )
     print("       argus scan ml <path>   (included in argus scan all)")
 
     installed, missing = [], []
@@ -675,6 +798,15 @@ def main(argv: list[str] | None = None) -> int:
 
         run_server()
         return 0
+
+    if args.command == "ci":
+        if getattr(args, "ci_command", None) is None:
+            parser.parse_args(["ci", "--help"])
+            return 0
+        if args.ci_command == "pr-paths":
+            return _cmd_pr_paths(args)
+        print(f"Unknown ci command: {args.ci_command}", file=sys.stderr)
+        return 2
 
     if args.command == "compare":
         return _cmd_compare(args)

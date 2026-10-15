@@ -10,12 +10,20 @@ permissions:
   contents: read
   security-events: write
 
+# Pull requests scan only files changed since the base commit.
+# More than this many changed files falls back to a full repository scan.
+env:
+  ARGUS_PR_FILE_LIMIT: "50"
+
 jobs:
   argus-sarif:
     name: Argus scan → SARIF
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so `git diff` can see the pull request base SHA.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -26,19 +34,52 @@ jobs:
           pip install -e packages/languages
           pip install -e packages/python
 
-      - name: Run Argus scan (SARIF)
+      - name: Resolve changed files
+        id: scope
+        if: github.event_name == 'pull_request'
         run: |
-          argus scan code packages/python \
+          argus ci pr-paths \
+            --base "${{ github.event.pull_request.base.sha }}" \
+            --head "${{ github.sha }}" \
+            --limit "${{ env.ARGUS_PR_FILE_LIMIT }}" \
+            --output scan-paths.txt \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Scan changed files (SAST + secrets)
+        if: github.event_name == 'pull_request' && steps.scope.outputs.mode == 'changed'
+        run: |
+          mkdir -p argus-results
+          argus scan sast . \
+            --paths-file scan-paths.txt \
             --format sarif \
-            --output argus-results.sarif \
+            --output argus-results/sast.sarif \
+            --fail-on never
+          argus scan secrets . \
+            --paths-file scan-paths.txt \
+            --format sarif \
+            --output argus-results/secrets.sarif \
+            --fail-on never
+        continue-on-error: true
+
+      - name: Full repository scan (SAST + secrets)
+        if: github.event_name != 'pull_request' || steps.scope.outputs.mode == 'full'
+        run: |
+          mkdir -p argus-results
+          argus scan sast . \
+            --format sarif \
+            --output argus-results/sast.sarif \
+            --fail-on never
+          argus scan secrets . \
+            --format sarif \
+            --output argus-results/secrets.sarif \
             --fail-on never
         continue-on-error: true
 
       - name: Upload SARIF to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
-        if: always() && hashFiles('argus-results.sarif') != ''
+        if: always() && hashFiles('argus-results/*.sarif') != ''
         with:
-          sarif_file: argus-results.sarif
+          sarif_file: argus-results
           category: argus
 
       - name: Upload SARIF artifact
@@ -46,5 +87,5 @@ jobs:
         if: always()
         with:
           name: argus-sarif
-          path: argus-results.sarif
+          path: argus-results
           if-no-files-found: ignore

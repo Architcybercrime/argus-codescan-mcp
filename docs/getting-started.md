@@ -259,6 +259,11 @@ asyncio.run(main())
 # GitHub Code Scanning — export SARIF
 argus scan code . --format sarif -o argus.sarif
 
+# Pull request CI — scan only files changed since the base commit
+argus ci pr-paths --base "$BASE_SHA" --limit 50 -o scan-paths.txt
+argus scan sast . --paths-file scan-paths.txt --format sarif -o sast.sarif
+argus scan secrets . --paths-file scan-paths.txt --format sarif -o secrets.sarif
+
 # Repo policy — copy .argus.yml.example to .argus.yml
 argus scan all . --fail-on high
 
