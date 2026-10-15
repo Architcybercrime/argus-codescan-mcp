@@ -12,7 +12,6 @@ from argus.models import AggregatedReport, Finding, ScanResult, ScanType, Severi
 from argus.tools.malware import run_malware_scan
 from argus.tools.sast import run_all_sast
 from argus.tools.secrets import run_all_secrets
-from argus.utils import collect_scan_results
 
 logger = logging.getLogger(__name__)
 
@@ -67,14 +66,14 @@ async def run_review(
 
     if not files:
         mode = "staged" if staged else (f"vs {base}" if base else "vs HEAD")
-        results = _empty_review_result(
+        empty = _empty_review_result(
             repo_root,
             reason=(
                 f"No changed files to review ({mode}). "
                 "Working tree matches the selected baseline."
             ),
         )
-        return AggregatedReport(target=str(repo_root), results=results)
+        return AggregatedReport(target=str(repo_root), results=empty)
 
     tree = build_review_tree(files, repo_root, staging_parent=staging_parent)
     try:
@@ -84,15 +83,15 @@ async def run_review(
             run_malware_scan(str(tree.root)),
             return_exceptions=True,
         )
-        results: list[ScanResult] = []
+        gathered: list[ScanResult] = []
         for batch in batches:
             if isinstance(batch, list):
-                results.extend(batch)
+                gathered.extend(batch)
             elif isinstance(batch, ScanResult):
-                results.append(batch)
+                gathered.append(batch)
             elif isinstance(batch, BaseException):
                 logger.exception("Review scanner failed: %s", batch)
-                results.append(
+                gathered.append(
                     ScanResult(
                         tool="argus-review",
                         scan_type=ScanType.SAST,
@@ -102,7 +101,7 @@ async def run_review(
                     )
                 )
 
-        results = _remap_results(collect_scan_results(results, label="Review"), tree)
+        remapped = _remap_results(gathered, tree)
         meta = {
             "review": True,
             "staged": staged,
@@ -110,10 +109,10 @@ async def run_review(
             "files": list(tree.relative_files),
             "file_count": len(tree.relative_files),
         }
-        if results:
-            results[0].metadata = {**(results[0].metadata or {}), **meta}
+        if remapped:
+            remapped[0].metadata = {**(remapped[0].metadata or {}), **meta}
         else:
-            results = [
+            remapped = [
                 ScanResult(
                     tool="argus-review",
                     scan_type=ScanType.SAST,
@@ -130,7 +129,7 @@ async def run_review(
                     metadata=meta,
                 )
             ]
-        return AggregatedReport(target=str(repo_root), results=results)
+        return AggregatedReport(target=str(repo_root), results=remapped)
     finally:
         tree.cleanup()
 
