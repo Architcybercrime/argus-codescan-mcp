@@ -100,6 +100,8 @@ Connect Cursor, VS Code, Claude Desktop, JetBrains, Windsurf, or any MCP-compati
 | `get_fix_plan` | Group scan findings into a read-only remediation plan ordered by severity. |
 | `check_tools` | List which scanners are installed |
 
+MCP clients can also read the finding schema, scan categories and example workflows through the [documentation resources](docs/api-reference.md#documentation-resources).
+
 Scans are **read-only**. Fixes run only when you ask — via `apply_fix`, VS Code Quick Fix, or your AI editing code from `fix_guidance`.
 
 ---

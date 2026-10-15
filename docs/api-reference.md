@@ -4,6 +4,34 @@ All tools communicate via the [Model Context Protocol](https://modelcontextproto
 
 ---
 
+## Documentation resources
+
+MCP clients can discover these read-only resources with `resources/list` and
+retrieve their contents with `resources/read`. Each resource returns JSON with
+an `application/json` MIME type.
+
+| URI | Contents |
+|-----|----------|
+| `argus://schema/finding` | JSON Schema derived from the public Finding model, excluding the internal raw scanner payload. |
+| `argus://scan-types` | Scan category identifiers and the registered MCP tools for those categories. |
+| `argus://workflows` | Example requests for staged review and source/dependency scanning, with interpretation guidance. |
+
+Reading resources does not scan a project, read source files or contact external
+services. Example paths are placeholders to replace before invoking scan tools.
+Invoking those tools can run external scanners with their normal network access.
+Unknown resource URIs return a protocol error rather than reading arbitrary paths.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "resources/read",
+  "params": {"uri": "argus://schema/finding"}
+}
+```
+
+---
+
 ## `scan_sast`
 
 Run Static Application Security Testing on source code.

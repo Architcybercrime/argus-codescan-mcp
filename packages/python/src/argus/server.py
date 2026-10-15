@@ -15,10 +15,13 @@ from typing import Any
 import mcp.server.stdio
 import mcp.types as types
 from mcp.server import NotificationOptions, Server
+from mcp.server.lowlevel.helper_types import ReadResourceContents
 from mcp.server.models import InitializationOptions
+from pydantic import AnyUrl
 
 from argus.cloud_upload import ScanTimer, upload_scan_report
 from argus.models import AggregatedReport
+from argus.resources import RESOURCE_DEFINITIONS, read_resource_json
 from argus.tools.ansible import (
     run_all_ansible,
     run_ansible_lint,
@@ -75,6 +78,26 @@ server = Server("argus-scan")
 # ---------------------------------------------------------------------------
 # Tool definitions
 # ---------------------------------------------------------------------------
+
+
+@server.list_resources()
+async def list_resources() -> list[types.Resource]:
+    """Advertise static documentation resources without scanning the filesystem."""
+    return [
+        types.Resource(
+            uri=AnyUrl(uri),
+            name=name,
+            description=description,
+            mimeType="application/json",
+        )
+        for uri, name, description in RESOURCE_DEFINITIONS
+    ]
+
+
+@server.read_resource()
+async def read_resource(uri: AnyUrl) -> list[ReadResourceContents]:
+    """Read a documented Argus resource, rejecting unrecognised URIs."""
+    return [ReadResourceContents(content=read_resource_json(str(uri)), mime_type="application/json")]
 
 
 @server.list_tools()  # type: ignore[attr-defined]
