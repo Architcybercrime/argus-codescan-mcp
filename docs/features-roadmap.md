@@ -177,6 +177,27 @@ Included in `argus scan all` and MCP `scan_all`. **Not antivirus** — static pa
 
 ---
 
+### 8. Local code review (`argus review` / MCP `review_code`) (#80)
+
+| Item | Location |
+|------|----------|
+| Git changed-file resolver | `packages/python/src/argus/git_files.py` |
+| Orchestrator | `packages/python/src/argus/tools/review.py` |
+| CLI | `argus review .` · `--staged` · `--base REF` |
+| MCP tool | `review_code` |
+
+Runs **secrets + SAST + malware** on git-changed (or staged) files only — local, no pipeline required. Not a GitHub PR comment bot (#43).
+
+```bash
+argus review .
+argus review . --staged --fail-on high
+argus review . --base main
+```
+
+Follow-ups: npm `argus-codescan review` (#81), docs/cookbook polish (#82), pre-commit example (#83).
+
+---
+
 ## Planned (next milestones)
 
 ### CI / DevSecOps
@@ -187,8 +208,9 @@ Included in `argus scan all` and MCP `scan_all`. **Not antivirus** — static pa
 | PR comment bot with scan summary | #43 | Planned |
 | Cloud upload in CI | #34 | Partial (env-based upload exists) |
 | Scheduled nightly scans | #35 | Planned |
-| Changed-files-only PR scan | #36 | Planned |
-| Pre-commit hook | #42 | Planned |
+| Changed-files-only PR scan | #36 | Planned (CI); local review shipped in #80 |
+| Pre-commit hook | #42 / #83 | Planned |
+| npm local `review` command | #81 | Planned |
 | GitLab CI template | #41 | Planned |
 
 ### AI-assisted remediation
