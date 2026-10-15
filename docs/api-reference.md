@@ -237,6 +237,65 @@ Reformat a raw JSON scan result as Markdown.
 
 ---
 
+## `explain_finding`
+
+Explain a supplied finding using its scanner context, remediation guidance and
+CWE identifiers. The tool supports every scan category in the public model,
+including secrets, SCA, IaC, DAST and SAST.
+
+### Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `finding` | `object` | Yes | Finding from a scan report, including non-empty `title`, `severity`, `scan_type` and `tool` fields. |
+| `code_snippet` | `string` | No | Optional caller-supplied snippet text to include in the explanation and review prompt. |
+
+The finding can also include `file`, `line`, `column`, `description`, `rule_id`,
+`fix_guidance`, `references`, `cwe` and `cve`. Severity and scan category values
+follow the public model enums. CWE values accept numeric identifiers or strings
+such as `CWE-79`, including the stringified lists produced by some scanners.
+
+### Example
+
+```json
+{
+  "name": "explain_finding",
+  "arguments": {
+    "finding": {
+      "title": "Potential SQL injection",
+      "severity": "high",
+      "scan_type": "sast",
+      "tool": "semgrep",
+      "file": "app.py",
+      "line": 12,
+      "cwe": "CWE-89",
+      "fix_guidance": "Use parameterised queries."
+    },
+    "code_snippet": "cursor.execute(query)"
+  }
+}
+```
+
+### Response
+
+The response text contains JSON with `finding`, `explanation`, `cwe_ids`,
+`fix_guidance`, `rotation_checklist`, `references` and `review_prompt`. It includes
+`code_snippet` only when the caller supplies one. The review prompt combines
+verification instructions with the structured finding context.
+
+Existing scanner guidance is retained. Secret findings always include the
+existing provider-specific or generic rotation checklist. Other findings without
+scanner guidance receive category-specific review steps rather than an invented
+fix. CWE links are built only from supplied identifiers and are not fetched.
+
+The tool makes no external service calls, runs no scanners and applies no fixes.
+File paths are descriptive metadata and are never opened. Supplied description
+and snippet text are preserved; this endpoint does not implement report redaction.
+Internal raw scanner payloads are excluded from the explanation and prompt.
+Malformed finding fields return an explanatory validation message.
+
+---
+
 ## `apply_fix`
 
 Preview or apply a fix for a **specific finding**. Only call when the user explicitly asks — scans never modify files.

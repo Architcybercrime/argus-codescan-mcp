@@ -95,6 +95,7 @@ Connect Cursor, VS Code, Claude Desktop, JetBrains, Windsurf, or any MCP-compati
 | `review_code` | Local code review — secrets + SAST + malware on git-changed / staged files only |
 | `apply_fix` | Preview or apply a fix for one finding (user must ask — scans never auto-fix) |
 | `compare_scans` | Diff baseline vs current scan JSON (new/fixed findings) |
+| `explain_finding` | Explain a supplied finding with CWE links, remediation guidance and a review prompt. |
 | `get_scan_report` | Reformat a previous scan JSON as Markdown or SARIF |
 | `check_tools` | List which scanners are installed |
 
