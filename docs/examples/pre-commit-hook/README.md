@@ -7,7 +7,32 @@ This example demonstrates a Git pre-commit hook that runs `argus review --staged
 - Argus installed (`pip install argus-scan`)
 - Git initialized in your project
 
+## Related
+
+Supersedes and replaces the secrets-only approach in [#42](https://github.com/argus-code-scanning/argus-codescan-mcp/issues/42). This example runs a full local review (`argus review --staged`), which includes secrets, SAST, and malware checks in a single pass.
+
 ## Installation
+
+### Option 1 — Using the `pre-commit` Framework (Recommended)
+
+If you use the [pre-commit](https://pre-commit.com/) framework, add the following to your project's `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/argus-code-scanning/argus-codescan-mcp
+    rev: main  # Pin to a tag or commit SHA in production
+    hooks:
+      - id: argus-review
+```
+
+Then run:
+
+```bash
+pip install pre-commit argus-scan
+pre-commit install
+```
+
+### Option 2 — Manual Git Hook
 
 1. Create the hook file in your project:
 
@@ -15,7 +40,7 @@ This example demonstrates a Git pre-commit hook that runs `argus review --staged
    touch .git/hooks/pre-commit
    ```
 
-2. Copy the example hook into your project's Git hooks directory and make it executable:
+2. Copy the contents of `pre-commit.sh` into `.git/hooks/pre-commit`, and make it executable:
 
    ```bash
    cp pre-commit.sh .git/hooks/pre-commit
