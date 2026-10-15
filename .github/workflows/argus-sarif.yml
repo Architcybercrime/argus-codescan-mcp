@@ -75,12 +75,21 @@ jobs:
             --fail-on never
         continue-on-error: true
 
-      - name: Upload SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always() && hashFiles('argus-results/*.sarif') != ''
+      # Code scanning accepts one SARIF run per category, so upload each
+      # scan separately.
+      - name: Upload SAST SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() && hashFiles('argus-results/sast.sarif') != ''
         with:
-          sarif_file: argus-results
-          category: argus
+          sarif_file: argus-results/sast.sarif
+          category: argus-sast
+
+      - name: Upload secrets SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() && hashFiles('argus-results/secrets.sarif') != ''
+        with:
+          sarif_file: argus-results/secrets.sarif
+          category: argus-secrets
 
       - name: Upload SARIF artifact
         uses: actions/upload-artifact@v4
