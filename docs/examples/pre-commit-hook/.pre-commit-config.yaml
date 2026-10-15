@@ -1,0 +1,14 @@
+# Example .pre-commit-config.yaml
+# Copy this file into your project root to enable Argus reviews on every commit.
+#
+# Install the hook with:
+#   pip install pre-commit argus-scan
+#   pre-commit install
+#
+# See: https://pre-commit.com/
+
+repos:
+  - repo: https://github.com/argus-code-scanning/argus-codescan-mcp
+    rev: main  # Pin to a tag or commit SHA in production
+    hooks:
+      - id: argus-review

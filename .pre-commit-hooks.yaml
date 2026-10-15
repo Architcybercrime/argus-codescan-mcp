@@ -1,0 +1,7 @@
+- id: argus-review
+  name: Argus Review (staged files)
+  description: Run Argus security review on staged files (secrets, SAST, malware)
+  entry: argus review . --staged --fail-on high
+  language: system
+  pass_filenames: false
+  always_run: true
