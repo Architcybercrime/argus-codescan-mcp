@@ -228,6 +228,8 @@ Scan my Kubernetes manifests for security misconfigurations
 Run a full security audit of my codebase and give me a prioritised fix list
 ```
 
+More copy-paste prompts (secrets, malware, Terraform, SARIF, ML, baseline diff, and more): [MCP Prompt Cookbook](mcp-prompt-cookbook.md).
+
 ---
 
 ## Minimal Working Example (Python SDK)

@@ -490,8 +490,8 @@ argus-codescan-mcp/
 | [Tool Setup](docs/tool-setup.md) | Install every scanner on every platform |
 | [Contributing](CONTRIBUTING.md) | Add scanners, clients, and fixes |
 | [Add a YAML rule](docs/contributing-rules.md) | 5-minute guide to extend malware/ML/DB rules |
+| [MCP Prompt Cookbook](docs/mcp-prompt-cookbook.md) | 8 example prompts for Argus MCP scans |
 | [Security Policy](SECURITY.md) | Report vulnerabilities |
-[MCP Prompt Cookbook](docs/mcp-prompt-cookbook.md) — Eight example prompts for Argus scans.
 
 ---
 

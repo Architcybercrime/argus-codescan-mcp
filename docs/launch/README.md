@@ -8,6 +8,7 @@ Materials to promote Argus as open source.
 | [viral-contributors.md](viral-contributors.md) | 7-day viral plan + social posts + contributor funnel |
 | [awesome-mcp-submission.md](awesome-mcp-submission.md) | PR text for awesome-mcp-servers and similar lists |
 | [github-release-v0.2.0.md](github-release-v0.2.0.md) | GitHub Release notes for v0.2.0 |
+| [MCP Prompt Cookbook](../mcp-prompt-cookbook.md) | 8 IDE prompts to demo Argus MCP in posts / launch |
 
 ## Before you launch
 
