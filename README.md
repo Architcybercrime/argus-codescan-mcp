@@ -98,6 +98,8 @@ Connect Cursor, VS Code, Claude Desktop, JetBrains, Windsurf, or any MCP-compati
 | `get_scan_report` | Reformat a previous scan JSON as Markdown or SARIF |
 | `check_tools` | List which scanners are installed |
 
+MCP clients can also read the finding schema, scan categories and example workflows through the [documentation resources](docs/api-reference.md#documentation-resources).
+
 Scans are **read-only**. Fixes run only when you ask — via `apply_fix`, VS Code Quick Fix, or your AI editing code from `fix_guidance`.
 
 ---
