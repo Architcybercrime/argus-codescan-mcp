@@ -20,7 +20,7 @@ _GUIDANCE = {
 }
 
 
-def explain_finding(finding: dict[str, Any], code_snippet: str | None = None) -> dict[str, Any]:
+def explain_finding(finding: Any, code_snippet: str | None = None) -> dict[str, Any]:
     """Return finding context, reference links, guidance and a reusable review prompt.
 
     Snippets come only from the caller. Internal raw scanner payloads are not
