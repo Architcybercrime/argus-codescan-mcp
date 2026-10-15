@@ -83,8 +83,15 @@ server = Server("argus-scan")
 @server.list_resources()
 async def list_resources() -> list[types.Resource]:
     """Advertise static documentation resources without scanning the filesystem."""
-    return [types.Resource(uri=uri, name=name, description=description, mimeType="application/json")
-            for uri, name, description in RESOURCE_DEFINITIONS]
+    return [
+        types.Resource(
+            uri=AnyUrl(uri),
+            name=name,
+            description=description,
+            mimeType="application/json",
+        )
+        for uri, name, description in RESOURCE_DEFINITIONS
+    ]
 
 
 @server.read_resource()
