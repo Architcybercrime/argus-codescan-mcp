@@ -43,6 +43,34 @@ Every scan **writes a CSV report** automatically to your working directory.
 
 ## Usage by scan type
 
+### Local review (`review`)
+
+Review whole changed files with the existing npm SAST and secrets scanners.
+
+```bash
+npx argus-codescan review .
+npx argus-codescan review . --staged --no-csv
+npx argus-codescan review . --base main --format json
+```
+
+The optional path locates the Git repository, and review covers changes throughout
+that repository. By default, it scans tracked changes against `HEAD` plus untracked
+files that Git does not ignore. `--staged` scans the contents stored in the Git
+index, even when the working copy has later edits. `--base REF` includes changes
+from `REF...HEAD`, uncommitted changes and untracked files. The two selection
+options cannot be combined.
+
+Deleted files, symlinks, submodules and generated dependency directories are skipped.
+Selected files are copied into a temporary tree that is removed after the scanners
+finish, including when a scanner fails. Findings retain repository-relative paths.
+Existing scan output options apply, including automatic CSV output and `--no-csv`.
+Exit codes follow `scan`: zero for no findings and one for findings or a review error.
+
+Git must be installed and available on `PATH`. This command runs SAST and secrets
+scanners only; use `argus review` from the Python package for malware scanning and
+full tool coverage. The existing deep SAST engine may download Opengrep and obtain
+rules through its normal scan behaviour.
+
 ### SCA — dependency scan (`scan sca`)
 
 Check `package.json` dependencies for known CVEs (uses npm audit).

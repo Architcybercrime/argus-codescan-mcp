@@ -3,6 +3,7 @@
  * CLI entry point for argus-codescan.
  *
  * - `scan …`  → native Node.js scans (no Python)
+ * - `review`  → native SAST + secrets on Git-changed files
  * - `mcp`     → start Python MCP server (optional, for AI clients)
  * - default   → same as `mcp`
  */
@@ -10,10 +11,15 @@
 import { spawnPythonMcpServer, checkPythonServerAvailable } from "./python-bridge.js";
 import { getMcpServerConfig } from "./config.js";
 import { runScanCli } from "./scan-cli.js";
+import { runReviewCli } from "./review-cli.js";
 
 const args = process.argv.slice(2);
 
 async function main() {
+  if (args[0] === "review") {
+    process.exit(await runReviewCli(args.slice(1)));
+  }
+
   if (args.includes("--help") || args.includes("-h")) {
     printHelp();
     process.exit(0);
@@ -63,6 +69,7 @@ USAGE:
   argus-codescan scan sast [path]    Source code — Python, Java, PHP, JS, …
   argus-codescan scan secrets [path] Leaked credentials
   argus-codescan scan all [path]     Everything above
+  argus-codescan review [path]       Review changed files (SAST + secrets)
   argus-codescan tools               Show installed scanners
   argus-codescan mcp                 Start MCP server (requires Python)
   argus-codescan --check             Check Python MCP server availability
@@ -82,6 +89,8 @@ INSTALL FOR FULL CODE SCANNING:
 EXAMPLES:
   argus-codescan scan all .
   argus-codescan scan sast . --fail-on high
+  argus-codescan review . --staged --no-csv
+  argus-codescan review . --base main --format json
 `);
 }
 
