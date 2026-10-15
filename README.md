@@ -43,6 +43,9 @@ argus scan all /my/project --fail-on high
 argus scan code /my/project --format sarif -o argus.sarif
 argus scan ml /my/ml-app
 argus scan malware /my/project
+argus review .                      # local code review — git-changed files only
+argus review . --staged             # only staged files
+argus review . --base main          # vs main (+ local dirty files)
 argus compare baseline.json current.json --fail-on-new
 argus tools
 ```
@@ -89,6 +92,7 @@ Connect Cursor, VS Code, Claude Desktop, JetBrains, Windsurf, or any MCP-compati
 | `scan_malware` | Malware / backdoor / crypto-miner / malicious BAT-PS1 heuristics |
 | `scan_container` | Container image CVE scanning |
 | `scan_all` | Everything, in parallel |
+| `review_code` | Local code review — secrets + SAST + malware on git-changed / staged files only |
 | `apply_fix` | Preview or apply a fix for one finding (user must ask — scans never auto-fix) |
 | `compare_scans` | Diff baseline vs current scan JSON (new/fixed findings) |
 | `get_scan_report` | Reformat a previous scan JSON as Markdown or SARIF |

@@ -186,6 +186,11 @@ argus-scan scan container nginx:latest
 # Everything at once
 argus-scan scan all /path/to/project
 
+# Local code review — only git-changed files (secrets + SAST + malware)
+argus-scan review .
+argus-scan review . --staged
+argus-scan review . --base main --fail-on high
+
 # Check which tools are installed
 argus-scan tools
 ```
@@ -203,6 +208,11 @@ argus-scan scan sast /myapp -o report.md # save to file
 argus-scan scan sast /myapp --min-severity high --fail-on high
 echo $?   # 1 if high/critical findings found, 0 otherwise
 ```
+
+**Local code review (not a CI bot):** install Argus, then run `argus review` on your
+working tree before commit/push. It scans only changed files — faster than
+`scan all`, and stays on your machine. MCP clients can call `review_code` the
+same way.
 
 ### Option B: AI-assisted via MCP
 
@@ -228,7 +238,11 @@ Scan my Kubernetes manifests for security misconfigurations
 Run a full security audit of my codebase and give me a prioritised fix list
 ```
 
-More copy-paste prompts (secrets, malware, Terraform, SARIF, ML, baseline diff, and more): [MCP Prompt Cookbook](mcp-prompt-cookbook.md).
+```
+Review only my git-changed files for secrets, SAST issues, and malware heuristics
+```
+
+More copy-paste prompts (secrets, malware, Terraform, SARIF, ML, baseline diff, local review, and more): [MCP Prompt Cookbook](mcp-prompt-cookbook.md).
 
 ---
 

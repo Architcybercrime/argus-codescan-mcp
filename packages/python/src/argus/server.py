@@ -36,6 +36,7 @@ from argus.tools.iac import (
 )
 from argus.tools.malware import run_malware_scan
 from argus.tools.ml import run_ml_scan
+from argus.tools.review import review_summary_lines, run_review
 from argus.tools.sast import (
     run_all_sast,
     run_bandit,
@@ -396,6 +397,53 @@ async def list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
+            name="review_code",
+            description=(
+                "Local code review: scan only git-changed (or staged) files with secrets, "
+                "SAST, and malware heuristics. Use this instead of scan_all when the user "
+                "wants a fast review of their working-tree diff before commit or push. "
+                "Does not post PR comments and does not modify files."
+            ),
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": "Path to a git repository (default workspace root)",
+                    },
+                    "staged": {
+                        "type": "boolean",
+                        "description": "If true, only review staged files (git diff --cached)",
+                        "default": False,
+                    },
+                    "base": {
+                        "type": "string",
+                        "description": (
+                            "Optional git ref to diff against (e.g. main, origin/main). "
+                            "Also includes local uncommitted changes."
+                        ),
+                    },
+                    "format": {
+                        "type": "string",
+                        "enum": ["markdown", "json", "sarif"],
+                        "description": "Output format (default: markdown)",
+                        "default": "markdown",
+                    },
+                    "timeout": {
+                        "type": "integer",
+                        "description": "Timeout in seconds per tool (default: 300)",
+                        "default": 300,
+                    },
+                    "semgrep_config": {
+                        "type": "string",
+                        "description": "Semgrep config for the SAST pass (default: auto)",
+                        "default": "auto",
+                    },
+                },
+                "required": ["target"],
+            },
+        ),
+        types.Tool(
             name="scan_all",
             description=(
                 "Run a comprehensive security scan combining SAST, SCA, secret scanning, IaC checks, "
@@ -586,6 +634,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
             return await _handle_scan_ml(arguments)
         elif name == "scan_malware":
             return await _handle_scan_malware(arguments)
+        elif name == "review_code":
+            return await _handle_review_code(arguments)
         elif name == "scan_container":
             return await _handle_scan_container(arguments)
         elif name == "scan_all":
@@ -913,6 +963,42 @@ async def _handle_scan_malware(args: dict[str, Any]) -> list[types.TextContent]:
         include_raw_json=True,
         target_path=target,
     )
+
+
+async def _handle_review_code(args: dict[str, Any]) -> list[types.TextContent]:
+    timer = ScanTimer()
+    target = args["target"]
+    fmt = args.get("format", "markdown")
+    staged = bool(args.get("staged", False))
+    base = args.get("base") or None
+    timeout = int(args.get("timeout", 300))
+    semgrep_config = args.get("semgrep_config", "auto")
+
+    report = await run_review(
+        target,
+        staged=staged,
+        base=base,
+        timeout=timeout,
+        semgrep_config=semgrep_config,
+    )
+    # Prepend a short review preamble for markdown clients.
+    contents = await _finish_scan(
+        report,
+        scan_type="review",
+        timer=timer,
+        fmt=fmt,
+        fail_on=args.get("fail_on"),
+        include_raw_json=True,
+        target_path=target,
+    )
+    if fmt == "markdown":
+        preamble = "\n".join(f"> {line}" for line in review_summary_lines(report))
+        if contents and contents[0].text:
+            contents[0] = types.TextContent(
+                type="text",
+                text=f"{preamble}\n\n{contents[0].text}",
+            )
+    return contents
 
 
 async def _handle_scan_container(args: dict[str, Any]) -> list[types.TextContent]:
