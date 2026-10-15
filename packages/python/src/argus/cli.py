@@ -15,6 +15,9 @@ Usage:
     argus scan all /path/to/project
     argus scan dast http://localhost:3000
     argus scan container nginx:latest
+    argus review .                 # local code review — git-changed files only
+    argus review . --staged        # only staged files
+    argus review . --base main     # changes vs main (+ local dirty files)
     argus tools        # list installed scanners
     argus mcp          # start MCP server (for AI clients)
     argus ci pr-paths --base <sha> --limit 50 -o scan-paths.txt
@@ -244,6 +247,34 @@ def build_parser() -> argparse.ArgumentParser:
         "--github-output",
         metavar="FILE",
         help="Append mode and changed_count to a GitHub Actions output file",
+    )
+
+    # ── review (local code review — changed files only) ─────────────────────
+    review_p = sub.add_parser(
+        "review",
+        help="Local code review — scan only git-changed (or staged) files",
+    )
+    review_p.add_argument(
+        "target",
+        nargs="?",
+        default=".",
+        help="Git repository path (default: current directory)",
+    )
+    _add_common(review_p, has_target=False, paths_file=False)
+    review_p.add_argument(
+        "--staged",
+        action="store_true",
+        help="Only review staged files (git diff --cached)",
+    )
+    review_p.add_argument(
+        "--base",
+        metavar="REF",
+        help="Review changes vs REF (e.g. main, origin/main) plus local dirty files",
+    )
+    review_p.add_argument(
+        "--semgrep-config",
+        default="auto",
+        help="Semgrep ruleset for the review SAST pass (default: auto)",
     )
 
     # ── tools ───────────────────────────────────────────────────────────────
@@ -665,6 +696,97 @@ def _cmd_pr_paths(args: argparse.Namespace) -> int:
     return 0
 
 
+async def _run_review(args: argparse.Namespace) -> int:
+    """Local code review: secrets + SAST + malware on git-changed files only."""
+    from argus.cloud_upload import ScanTimer, is_cloud_upload_enabled, upload_scan_report
+    from argus.compare import compare_reports, report_from_new_findings_only
+    from argus.policy import apply_policy, load_policy, merge_cli_policy
+    from argus.tools.review import review_summary_lines, run_review
+
+    timer = ScanTimer()
+    timeout = args.timeout
+    fmt = args.format
+    tools = getattr(args, "tools", None)
+    min_sev = getattr(args, "min_severity", "low")
+    fail_on = getattr(args, "fail_on", "never")
+    out_file = getattr(args, "output", None)
+    staged = bool(getattr(args, "staged", False))
+    base = getattr(args, "base", None)
+
+    policy = load_policy(path=getattr(args, "policy", None), start=args.target)
+    policy = merge_cli_policy(
+        policy,
+        fail_on=fail_on if fail_on != "never" else None,
+        min_severity=min_sev if min_sev != "low" else None,
+        tools=tools,
+        semgrep_config=getattr(args, "semgrep_config", None),
+    )
+    if policy.fail_on != "never":
+        fail_on = policy.fail_on
+    if policy.min_severity != "low":
+        min_sev = policy.min_severity
+    semgrep_cfg = getattr(args, "semgrep_config", "auto")
+    if policy.semgrep_config != "auto":
+        semgrep_cfg = policy.semgrep_config
+
+    mode = "staged" if staged else (f"base={base}" if base else "vs HEAD")
+    print(f"Running local REVIEW ({mode}) on: {args.target}", file=sys.stderr)
+
+    report = await run_review(
+        args.target,
+        staged=staged,
+        base=base,
+        timeout=timeout,
+        semgrep_config=semgrep_cfg,
+    )
+    for line in review_summary_lines(report):
+        print(line, file=sys.stderr)
+
+    report_dict = apply_policy(report.to_dict(), policy)
+
+    baseline_path = getattr(args, "baseline", None) or policy.baseline
+    if baseline_path:
+        baseline_data = json.loads(Path(baseline_path).read_text(encoding="utf-8"))
+        diff = compare_reports(baseline_data, report_dict)
+        print(
+            f"Baseline diff: {diff['summary']['new']} new, "
+            f"{diff['summary']['fixed']} fixed, "
+            f"{diff['summary']['unchanged']} unchanged.",
+            file=sys.stderr,
+        )
+        if policy.fail_on_new_only:
+            report_dict = report_from_new_findings_only(report_dict, baseline_data)
+            fail_on = fail_on if fail_on != "never" else "low"
+
+    total = sum(len(r.get("findings", [])) for r in report_dict.get("results", []))
+    unavailable = report_dict["summary"]["tools_unavailable"]
+    print(f"Review complete. {total} finding(s) found.", file=sys.stderr)
+    if unavailable:
+        print(f"Tools not installed (skipped): {', '.join(unavailable)}", file=sys.stderr)
+        print("  Run 'argus tools' to see install instructions.", file=sys.stderr)
+
+    should_upload = (getattr(args, "upload", False) or is_cloud_upload_enabled()) and not getattr(
+        args, "no_upload", False
+    )
+    if should_upload:
+        try:
+            upload_fail_on = fail_on if fail_on != "never" else None
+            status = await upload_scan_report(
+                report_dict,
+                duration_sec=timer.elapsed,
+                fail_on=upload_fail_on,
+                scan_type="review",
+                target=args.target,
+                force=getattr(args, "upload", False),
+            )
+            if status:
+                print(f"Cloud upload: {status}", file=sys.stderr)
+        except Exception as exc:
+            print(f"Cloud upload failed: {exc}", file=sys.stderr)
+
+    return _emit(report_dict, fmt, out_file, min_sev, fail_on)
+
+
 def _cmd_compare(args: argparse.Namespace) -> int:
     from argus.compare import compare_reports
 
@@ -810,6 +932,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "compare":
         return _cmd_compare(args)
+
+    if args.command == "review":
+        return asyncio.run(_run_review(args))
 
     if args.command == "scan":
         if args.scan_type is None:

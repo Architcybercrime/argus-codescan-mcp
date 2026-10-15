@@ -169,3 +169,39 @@ argus scan all /path/to/project --fail-on high
 The MCP report does not provide a CLI process exit code. DAST and container
 scans are included only when `target_url` and `container_image`, respectively,
 are supplied to `scan_all`.
+
+## 9. Local code review of git-changed files
+
+```text
+Use Argus review_code with target /path/to/project. Summarize critical and high
+findings first, including file, line, tool, and fix guidance. List which changed
+files were included. Do not apply fixes or edit files.
+```
+
+**MCP tool:** `review_code`.
+
+**CLI equivalent:**
+
+```sh
+argus review /path/to/project
+```
+
+**Expected result:** Secrets + SAST + malware findings limited to the working-tree
+diff (plus untracked files). Empty diffs are not treated as a full-repo clean
+bill of health.
+
+## 10. Review only staged files before commit
+
+```text
+Use Argus review_code with target /path/to/project and staged set to true.
+Prioritize secrets and high-severity SAST/malware findings in the staged set.
+Do not modify files or run git commit.
+```
+
+**MCP tool:** `review_code`, with `staged: true`.
+
+**CLI equivalent:**
+
+```sh
+argus review /path/to/project --staged --fail-on high
+```
