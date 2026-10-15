@@ -350,4 +350,14 @@ argus compare baseline.json current.json --fail-on-new
 
 SARIF export: `argus scan code . --format sarif -o argus.sarif`
 
+### Changed-file scans (pull requests)
+
+`argus scan sast`, `argus scan secrets`, and the other file-based scan commands accept `--paths-file`. Each line is scanned on its own and the findings are merged into one report. `argus ci pr-paths` builds that list from `git diff` and falls back to a full scan when the diff is larger than `--limit` (default 50).
+
+```bash
+argus ci pr-paths --base "$BASE_SHA" --limit 50 -o scan-paths.txt
+argus scan sast . --paths-file scan-paths.txt --format sarif -o sast.sarif
+argus scan secrets . --paths-file scan-paths.txt --format sarif -o secrets.sarif
+```
+
 See [features roadmap](features-roadmap.md) for `.argus.yml` policy and baseline diff workflows.

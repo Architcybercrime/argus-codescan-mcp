@@ -2,7 +2,7 @@
 
 This document tracks implemented and planned Argus features for security scanning, CI/CD, database security, and remediation.
 
-Related GitHub issues: [#32](https://github.com/argus-code-scanning/argus-codescan-mcp/issues/32), [#33](https://github.com/argus-code-scanning/argus-codescan-mcp/issues/33), [#30](https://github.com/argus-code-scanning/argus-codescan-mcp/issues/30).
+Related GitHub issues: [#32](https://github.com/argus-code-scanning/argus-codescan-mcp/issues/32), [#33](https://github.com/argus-code-scanning/argus-codescan-mcp/issues/33), [#36](https://github.com/argus-code-scanning/argus-codescan-mcp/issues/36), [#30](https://github.com/argus-code-scanning/argus-codescan-mcp/issues/30).
 
 ---
 
@@ -29,6 +29,18 @@ Related GitHub issues: [#32](https://github.com/argus-code-scanning/argus-codesc
 ```
 
 Findings appear in the GitHub **Security → Code scanning** tab.
+
+### Pull request scans of changed files only (#36)
+
+On `pull_request`, `.github/workflows/argus-sarif.yml` diffs the base SHA and scans those paths with `argus scan sast` and `argus scan secrets`. If more than 50 files changed, the job scans the whole repository instead. A pull request that only deletes files skips the scan.
+
+```bash
+argus ci pr-paths --base "$BASE_SHA" --limit 50 -o scan-paths.txt
+argus scan sast . --paths-file scan-paths.txt --format sarif -o sast.sarif
+argus scan secrets . --paths-file scan-paths.txt --format sarif -o secrets.sarif
+```
+
+`--paths-file` takes one path per line. The positional target is still used to find `.argus.yml`.
 
 ---
 
