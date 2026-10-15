@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'website/**'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -17,10 +18,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  # hashFiles() is only valid in step-level `if:` — not job-level.
+  # Gate deploy until website/ exists in the repo.
+  check:
     runs-on: ubuntu-latest
-    # No website/ in repo yet — avoid failed github-pages deployments.
-    if: hashFiles('website/package-lock.json') != ''
+    outputs:
+      has_website: ${{ steps.check.outputs.has_website }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        name: Check for website package-lock
+        run: |
+          if [ -f website/package-lock.json ]; then
+            echo "has_website=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_website=false" >> "$GITHUB_OUTPUT"
+            echo "No website/package-lock.json — skipping Pages deploy"
+          fi
+
+  deploy:
+    needs: check
+    if: needs.check.outputs.has_website == 'true'
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
