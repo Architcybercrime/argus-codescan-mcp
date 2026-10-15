@@ -96,6 +96,7 @@ Connect Cursor, VS Code, Claude Desktop, JetBrains, Windsurf, or any MCP-compati
 | `apply_fix` | Preview or apply a fix for one finding (user must ask — scans never auto-fix) |
 | `compare_scans` | Diff baseline vs current scan JSON (new/fixed findings) |
 | `get_scan_report` | Reformat a previous scan JSON as Markdown or SARIF |
+| `get_fix_plan` | Group scan findings into a read-only remediation plan ordered by severity. |
 | `check_tools` | List which scanners are installed |
 
 Scans are **read-only**. Fixes run only when you ask — via `apply_fix`, VS Code Quick Fix, or your AI editing code from `fix_guidance`.

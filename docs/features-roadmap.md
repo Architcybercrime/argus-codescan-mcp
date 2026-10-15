@@ -229,7 +229,7 @@ Follow-ups: npm `argus-codescan review` (#81), docs/cookbook polish (#82), pre-c
 
 | Feature | Issue | Status |
 |---------|-------|--------|
-| `get_fix_plan` — prioritized fix groups | #28 | Planned |
+| `get_fix_plan` — prioritized fix groups | #28 | Implemented |
 | `explain_finding` — CWE + checklist | #29 | Planned |
 | VS Code "Ask AI to fix" | #31 | Planned |
 | Batch `apply_fix` preview | #40 | Planned |
