@@ -42,6 +42,7 @@ See [AGENT-UPLOAD.md](AGENT-UPLOAD.md) for cloud upload env vars and behavior.
 | `ARGUS_API_KEY` | Enables post-scan upload to cloud dashboard when set |
 | `ARGUS_API_URL` | Cloud API base URL (default localhost for dev) |
 | `ARGUS_UPLOAD_SCRIPT` | Optional custom upload hook |
+| `ARGUS_UPLOAD_REDACT` | `1` (default) redacts emails, SSNs and card numbers in uploads; `0` disables. Git remote credentials are always stripped. See [AGENT-UPLOAD.md](AGENT-UPLOAD.md#data-handling) |
 
 Unset `ARGUS_API_KEY` to guarantee no cloud upload from MCP or CLI.
 

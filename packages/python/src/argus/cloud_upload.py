@@ -10,10 +10,12 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import subprocess
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -24,6 +26,12 @@ DEFAULT_API_URL = "http://localhost:4000/v1"
 DEFAULT_FAIL_ON = "high"
 
 _SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4, "unknown": 5}
+
+# Upload redaction (on by default; ARGUS_UPLOAD_REDACT=0 disables it).
+MAX_UPLOAD_MESSAGE_CHARS = 500
+_EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
+_SSN_RE = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
+_CARD_RE = re.compile(r"\b\d(?:[ -]?\d){12,18}\b")
 
 
 class CloudConfig:
@@ -62,6 +70,69 @@ def get_cloud_config() -> CloudConfig:
 
 def is_cloud_upload_enabled() -> bool:
     return get_cloud_config().enabled
+
+
+def is_upload_redaction_enabled() -> bool:
+    value = os.environ.get("ARGUS_UPLOAD_REDACT", "1").strip().lower()
+    return value not in {"0", "false", "no", "off"}
+
+
+def _luhn_valid(digits: str) -> bool:
+    total = 0
+    for index, char in enumerate(reversed(digits)):
+        digit = int(char)
+        if index % 2:
+            digit *= 2
+            if digit > 9:
+                digit -= 9
+        total += digit
+    return total % 10 == 0
+
+
+def redact_pii(text: str) -> tuple[str, int]:
+    """Redact emails, US SSNs and card numbers. Returns (text, redaction count)."""
+    count = 0
+    for pattern, label in ((_EMAIL_RE, "EMAIL"), (_SSN_RE, "SSN"), (_CARD_RE, "CARD")):
+
+        def _replace(match: re.Match[str], label: str = label) -> str:
+            nonlocal count
+            if label == "CARD" and not _luhn_valid(re.sub(r"[ -]", "", match.group(0))):
+                return match.group(0)
+            count += 1
+            return f"[REDACTED_{label}]"
+
+        text = pattern.sub(_replace, text)
+    return text, count
+
+
+def strip_url_credentials(url: str) -> str:
+    """Drop ``user:token@`` from URLs such as an authenticated git remote."""
+    parts = urllib.parse.urlsplit(url)
+    if not parts.scheme or "@" not in parts.netloc:
+        return url
+    host = parts.netloc.rsplit("@", 1)[1]
+    return urllib.parse.urlunsplit(parts._replace(netloc=host))
+
+
+def sanitize_for_upload(payload: dict[str, Any]) -> tuple[dict[str, Any], int]:
+    """Redact PII in finding titles/messages and cap message length.
+
+    Returns a new payload and the number of redactions made.
+    """
+    total = 0
+    findings: list[dict[str, Any]] = []
+    for finding in payload.get("findings", []):
+        clean = dict(finding)
+        for key in ("title", "message"):
+            value = clean.get(key)
+            if isinstance(value, str):
+                clean[key], count = redact_pii(value)
+                total += count
+        message = clean.get("message")
+        if isinstance(message, str) and len(message) > MAX_UPLOAD_MESSAGE_CHARS:
+            clean["message"] = message[:MAX_UPLOAD_MESSAGE_CHARS] + "…"
+        findings.append(clean)
+    return {**payload, "findings": findings}, total
 
 
 def scan_status(report_dict: dict[str, Any], fail_on: str) -> str:
@@ -148,7 +219,7 @@ def get_git_metadata(cwd: Path | str) -> dict[str, str]:
             pass
         return ""
 
-    repo = _git("remote", "get-url", "origin")
+    repo = strip_url_credentials(_git("remote", "get-url", "origin"))
     branch = _git("rev-parse", "--abbrev-ref", "HEAD")
     commit = _git("rev-parse", "HEAD")
     return {"repo": repo, "branch": branch, "commit": commit}
@@ -239,6 +310,13 @@ async def upload_scan_report(
         fail_on=effective_fail_on,
         scan_type=scan_type,
         target=target,
+    )
+    if is_upload_redaction_enabled():
+        payload, redactions = sanitize_for_upload(payload)
+    else:
+        redactions = 0
+    logger.info(
+        "Cloud upload: %d finding(s), %d redaction(s)", len(payload["findings"]), redactions
     )
 
     import asyncio
