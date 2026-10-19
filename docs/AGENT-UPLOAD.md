@@ -10,6 +10,7 @@ Upload scan results to the Argus cloud dashboard after each scan. Local scanning
 | `ARGUS_API_URL` | No | `http://localhost:4000/v1` | Cloud API base URL |
 | `ARGUS_FAIL_ON` | No | `high` | Severity threshold for `status: failed` in uploads |
 | `ARGUS_UPLOAD_SCRIPT` | No | — | Optional Node script path instead of direct HTTP |
+| `ARGUS_UPLOAD_REDACT` | No | `1` | Redact PII in uploaded findings. Set `0` to send messages unredacted |
 
 ## MCP config (Cursor / Claude)
 
@@ -93,6 +94,20 @@ The agent sends JSON to `POST {ARGUS_API_URL}/scans`:
 ```
 
 `repo`, `branch`, and `commit` are detected from git automatically.
+
+## Data handling
+
+Before the payload leaves your machine, Argus cleans it:
+
+| What | Behavior | Can be disabled |
+|------|----------|-----------------|
+| Credentials in `repo` (`https://user:token@host/…`) | Always removed | No |
+| Emails, US SSNs (`123-45-6789`), card numbers (Luhn-checked) in `title` and `message` | Replaced with `[REDACTED_EMAIL]`, `[REDACTED_SSN]`, `[REDACTED_CARD]` | `ARGUS_UPLOAD_REDACT=0` |
+| `message` longer than 500 characters | Truncated | `ARGUS_UPLOAD_REDACT=0` |
+
+Rule ID, severity, file, and line are sent unchanged so the dashboard can still group and link findings. Raw scanner output is never uploaded. The agent logs only counts (`Cloud upload: N finding(s), M redaction(s)`), not finding content.
+
+See also [privacy-and-data.md](privacy-and-data.md).
 
 ## Optional Node upload script
 
