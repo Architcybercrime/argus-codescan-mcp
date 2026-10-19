@@ -10,12 +10,32 @@ import asyncio
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
 from argus.models import Finding, ScanResult, ScanType, Severity
 from argus.utils import collect_scan_results, is_tool_available, parse_json_output, run_command
 
 logger = logging.getLogger(__name__)
+
+
+ZAP_IMAGE = "ghcr.io/zaproxy/zaproxy:stable"
+
+ZAP_IN_CONTAINER_HELP = (
+    "Argus is running inside a container, where nested Docker is usually unavailable, "
+    "so OWASP ZAP cannot be started from here. Options:\n"
+    "  1. Run the DAST scan from the host: argus scan dast <url>\n"
+    f"  2. Run ZAP yourself: docker run --rm -t {ZAP_IMAGE} zap-baseline.py -t <url>\n"
+    "  3. Mount the host Docker socket (-v /var/run/docker.sock:/var/run/docker.sock) "
+    "and install the docker CLI. This gives the container root-equivalent access "
+    "to the host; only do it on trusted machines.\n"
+    "See packages/docker/README.md#dast-owasp-zap-inside-the-container"
+)
+
+
+def running_in_container() -> bool:
+    """Best-effort detection of Docker / Podman containers."""
+    return Path("/.dockerenv").exists() or Path("/run/.containerenv").exists()
 
 
 ZAP_RISK_MAP: dict[str, Severity] = {
@@ -64,6 +84,9 @@ async def run_zap_baseline(
         )
 
     result.tool_available = False
+    if running_in_container():
+        result.errors.append(ZAP_IN_CONTAINER_HELP)
+        return result
     result.errors.append(
         "OWASP ZAP is not available. Install options:\n"
         "  1. Docker: docker pull ghcr.io/zaproxy/zaproxy:stable\n"
@@ -91,7 +114,7 @@ async def _run_zap_docker(
             "--rm",
             "-v",
             f"{tmpdir}:/zap/wrk/:rw",
-            "ghcr.io/zaproxy/zaproxy:stable",
+            ZAP_IMAGE,
             "zap-baseline.py",
             "-t",
             target_url,
@@ -111,6 +134,13 @@ async def _run_zap_docker(
             with open(docker_report) as f:
                 data = json.load(f)
             _parse_zap_json(data, result)
+        elif "Cannot connect to the Docker daemon" in stderr:
+            result.errors.append(
+                ZAP_IN_CONTAINER_HELP
+                if running_in_container()
+                else "ZAP docker scan failed: the Docker daemon is not running. "
+                "Start Docker (or Colima / Podman) and retry."
+            )
         elif code not in (0, 2):  # ZAP exits 2 on warnings
             result.errors.append(f"ZAP docker scan failed (exit {code}): {stderr[:400]}")
 

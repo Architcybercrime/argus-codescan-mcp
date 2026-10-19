@@ -21,7 +21,7 @@ A Docker image bundling the Argus MCP server **and all supported scanners** — 
 | ansible-lint | Ansible playbook linting |
 | Nikto | Web server scanner |
 
-> OWASP ZAP is **not** bundled (it needs its own container). Use `docker run ghcr.io/zaproxy/zaproxy:stable` separately.
+> OWASP ZAP is **not** bundled (it needs its own container). See [DAST (OWASP ZAP) inside the container](#dast-owasp-zap-inside-the-container).
 
 ## Prerequisites
 
@@ -160,6 +160,30 @@ With Compose (from repo root):
 docker compose -f packages/docker/docker-compose.yml run --rm argus tools
 docker compose -f packages/docker/docker-compose.yml run --rm argus scan all /workspace
 ```
+
+## DAST (OWASP ZAP) inside the container
+
+On the host, `argus scan dast` starts ZAP with `docker run ghcr.io/zaproxy/zaproxy:stable`. Inside the Argus container that usually fails: the image has no `docker` CLI and no access to a Docker daemon. When Argus detects it is running in a container (`/.dockerenv` or `/run/.containerenv`), it reports this instead of the generic install instructions.
+
+Nikto is bundled and works inside the container. For ZAP, pick one:
+
+1. **Run DAST from the host (recommended).** Install Argus locally (`pip install argus-scan`) and run `argus scan dast <url>`.
+2. **Run ZAP as its own container** and read its report directly:
+
+   ```bash
+   docker run --rm -t ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://host.docker.internal:3000
+   ```
+
+3. **Mount the host Docker socket** and add the docker CLI to a derived image:
+
+   ```bash
+   docker run --rm -v /var/run/docker.sock:/var/run/docker.sock my-argus-with-docker-cli \
+     scan dast http://host.docker.internal:3000
+   ```
+
+   > **Security:** mounting `docker.sock` gives the container root-equivalent control of the host. Only do this on trusted machines and never in shared CI runners.
+
+**Target URLs:** inside a container, `localhost` is the container itself, not your machine. Use `http://host.docker.internal:<port>` (Docker Desktop, OrbStack, Colima) or add `--add-host=host.docker.internal:host-gateway` on Linux.
 
 ## CI Example
 
