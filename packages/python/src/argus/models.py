@@ -2,9 +2,23 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
+
+# Bandit (B105/B106/B107) quotes the literal value in its message, e.g.
+# "Possible hardcoded password: 'hunter2'". Findings end up in SARIF uploads,
+# CI logs and the cloud dashboard, so the value must never be serialized.
+_SECRET_LITERAL_RE = re.compile(
+    r"(hardcoded password:\s*)(['\"])(.*)\2",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def redact_secret_literals(text: str) -> str:
+    """Replace secret values that scanners echo back in finding messages."""
+    return _SECRET_LITERAL_RE.sub(r"\1\2[REDACTED]\2", text)
 
 
 class Severity(str, Enum):
@@ -47,14 +61,14 @@ class Finding:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "title": self.title,
+            "title": redact_secret_literals(self.title),
             "severity": self.severity.value,
             "scan_type": self.scan_type.value,
             "tool": self.tool,
             "file": self.file,
             "line": self.line,
             "column": self.column,
-            "description": self.description,
+            "description": redact_secret_literals(self.description),
             "cwe": self.cwe,
             "cve": self.cve,
             "fix_guidance": self.fix_guidance,
