@@ -83,14 +83,11 @@ async def run_gitleaks(
             tool="gitleaks",
             file=leak.get("File", leak.get("file", "")),
             line=leak.get("StartLine", leak.get("line", 0)),
-            description=leak.get(
-                "Description",
-                leak.get("description", f"Secret detected: {leak.get('Match', '')[:50]}"),
-            ),
+            description=leak.get("Description", leak.get("description", "")),
             rule_id=leak.get("RuleID", ""),
             raw=leak,
         )
-        # Redact the actual secret value
+        # Never derive the description from Match/Secret: they hold the secret value.
         finding.description = (
             finding.description or f"Potential secret matched rule: {finding.rule_id}"
         )
