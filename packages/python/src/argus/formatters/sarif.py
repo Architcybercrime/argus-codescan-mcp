@@ -16,6 +16,11 @@ _SEV_TO_SARIF = {
     "unknown": "none",
 }
 
+# Extra rule tags per scan type, added after the scan_type tag (duplicates skipped).
+_SCAN_TYPE_EXTRA_TAGS: dict[str, tuple[str, ...]] = {
+    "pci": ("pci", "payment-data"),
+}
+
 
 def _severity_level(severity: str) -> str:
     return _SEV_TO_SARIF.get(severity.lower(), "warning")
@@ -53,6 +58,10 @@ def aggregated_report_to_sarif(report_dict: dict[str, Any]) -> dict[str, Any]:
                         **({"security-severity": _security_severity(finding.get("severity", ""))}),
                     },
                 }
+                tags = rules[key]["properties"]["tags"]
+                for extra in _SCAN_TYPE_EXTRA_TAGS.get(finding.get("scan_type", ""), ()):
+                    if extra not in tags:
+                        tags.append(extra)
                 if finding.get("cwe"):
                     rules[key]["properties"]["tags"].append(finding["cwe"])
 

@@ -416,6 +416,14 @@ async def list_tools() -> list[types.Tool]:
                         "description": "Reserved for future external malware scanners (default: 300)",
                         "default": 300,
                     },
+                    "fail_on": {
+                        "type": "string",
+                        "enum": ["critical", "high", "medium", "low", "never"],
+                        "description": (
+                            "Severity threshold that marks the cloud-uploaded scan as failed "
+                            "(default: ARGUS_FAIL_ON env var, else 'high')"
+                        ),
+                    },
                 },
                 "required": ["target"],
             },
@@ -444,6 +452,14 @@ async def list_tools() -> list[types.Tool]:
                         "type": "integer",
                         "description": "Reserved for future external PCI scanners (default: 300)",
                         "default": 300,
+                    },
+                    "fail_on": {
+                        "type": "string",
+                        "enum": ["critical", "high", "medium", "low", "never"],
+                        "description": (
+                            "Severity threshold that marks the cloud-uploaded scan as failed "
+                            "(default: ARGUS_FAIL_ON env var, else 'high')"
+                        ),
                     },
                 },
                 "required": ["target"],
