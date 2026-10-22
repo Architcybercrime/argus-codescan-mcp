@@ -19,6 +19,8 @@ RULE_FILES = (
     "pii.yaml",
     "java.yaml",
     "php.yaml",
+    "laravel.yaml",
+    "composer.yaml",
     "terraform.yaml",
     "ansible.yaml",
     "dart.yaml",
@@ -34,6 +36,7 @@ class LoadedRule:
     severity: Severity
     pattern: re.Pattern[str]
     languages: list[str] | None = None
+    exclude_languages: list[str] | None = None
 
 
 def _compile_pattern(raw: str, flags: list[str] | None) -> re.Pattern[str]:
@@ -60,6 +63,11 @@ def _parse_yaml_rules(data: Any) -> list[LoadedRule]:
                 severity=Severity.normalize(str(item.get("severity", "info"))),
                 pattern=_compile_pattern(str(item["pattern"]), item.get("flags")),
                 languages=[str(x) for x in item["languages"]] if item.get("languages") else None,
+                exclude_languages=(
+                    [str(x) for x in item["exclude_languages"]]
+                    if item.get("exclude_languages")
+                    else None
+                ),
             )
         )
     return out

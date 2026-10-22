@@ -44,6 +44,9 @@ A rule typically contains the following fields:
 * **`pattern`**: A Python regular expression used to identify a potential security issue.
 * **`flags`**: Optional matching flags. For example, `i` enables case-insensitive matching and `m` enables multiline mode.
 * **`languages`**: An optional list of languages to which the rule applies. Omit it to use the default behavior supported by the rule loader.
+* **`exclude_languages`**: Optional. Languages a rule without `languages` should skip, for example when a language-specific pack covers the case more precisely (`weak-crypto` skips `php` because `php.yaml` flags password hashing and weak ciphers instead).
+
+Config file types (`composer`, `dotenv-production`, `dotenv-example`) only receive rules that list them in `languages`; rules without `languages` are not applied to them.
 
 ### Tips for Writing Good Rules
 

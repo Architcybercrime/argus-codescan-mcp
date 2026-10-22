@@ -1,0 +1,114 @@
+# Laravel rules: application code (php), Blade templates (blade) and committed
+# environment files (dotenv-production: .env.production/.env.prod;
+# dotenv-example: .env.example/.sample/.dist/.template). Local .env is not scanned.
+
+- id: laravel-raw-sql
+  title: Possible SQL injection — request input in a raw query
+  severity: high
+  # Request input must be in the first argument (the SQL itself), either
+  # interpolated in a double-quoted string or outside any string before the
+  # first comma. Values passed as bindings (second argument) are safe.
+  pattern: '(DB::(raw|select|statement|unprepared|insert|update|delete)|->(whereRaw|orWhereRaw|selectRaw|orderByRaw|havingRaw|groupByRaw|fromRaw)|::(whereRaw|selectRaw|orderByRaw|havingRaw))\s*\(\s*("[^"]*(\$request->|\{\$request->|\$_(GET|POST|REQUEST|COOKIE)\b)|(''[^'']*''|"[^"]*"|[^,''"])*?(\$request->|\brequest\(|\$_(GET|POST|REQUEST|COOKIE)\b))'
+  languages: [php]
+
+- id: laravel-mass-assignment-request-all
+  title: Mass assignment — model filled from all request input
+  severity: high
+  pattern: '(::(create|forceCreate|firstOrCreate|updateOrCreate|insert)|->(fill|update|forceFill))\s*\(\s*(\$request->all\(\)|\brequest\(\)->all\(\)|Request::all\(\)|\$request->input\(\))'
+  languages: [php]
+
+- id: laravel-guarded-empty
+  title: Mass assignment protection disabled — $guarded = []
+  severity: medium
+  pattern: 'protected\s+\$guarded\s*=\s*\[\s*\]'
+  languages: [php]
+
+- id: laravel-unguard
+  title: Mass assignment protection disabled — Model::unguard() (fine in seeders)
+  severity: low
+  pattern: '::unguard\s*\('
+  languages: [php]
+
+- id: laravel-open-redirect
+  title: Possible open redirect — redirect to request input
+  severity: medium
+  pattern: '(\bredirect\s*\(\s*|redirect\(\)->(to|away)\s*\(\s*|Redirect::(to|away)\s*\(\s*)(\$request->|\brequest\(|\$_(GET|POST|REQUEST)\b)'
+  languages: [php]
+
+- id: laravel-csrf-disabled
+  title: CSRF protection disabled for all routes
+  severity: high
+  pattern: '(\$except\s*=\s*\[\s*[''"]\*[''"]|validateCsrfTokens\s*\(\s*except\s*:\s*\[\s*[''"]\*[''"])'
+  languages: [php]
+
+- id: laravel-debug-hardcoded
+  title: Debug mode hard-coded on in config
+  severity: high
+  pattern: '[''"]debug[''"]\s*=>\s*true\b'
+  languages: [php]
+
+- id: laravel-debug-default-true
+  title: Debug mode defaults to on when APP_DEBUG is unset
+  severity: medium
+  pattern: 'env\s*\(\s*[''"]APP_DEBUG[''"]\s*,\s*true\s*\)'
+  languages: [php]
+
+- id: laravel-upload-original-name
+  title: Upload stored with client-supplied filename (getClientOriginalName)
+  severity: medium
+  pattern: '(storeAs|storePubliclyAs|move)\s*\([^;]*getClientOriginalName\s*\('
+  languages: [php]
+
+- id: laravel-path-traversal
+  title: Possible path traversal — storage/download path from request input
+  severity: high
+  pattern: '(Storage::(disk\([^)]*\)->)?(get|download|delete|path|readStream|response)|response\(\)->(download|file))\s*\(\s*[^,)]*?(\$request->|\brequest\(|\$_(GET|POST|REQUEST)\b)'
+  languages: [php]
+
+- id: laravel-blade-unescaped-input
+  title: XSS — request input rendered unescaped with {!! !!}
+  severity: high
+  pattern: '\{!![^!]*(\$request|\brequest\(|\bold\(|\$_(GET|POST|REQUEST|COOKIE))'
+  languages: [blade]
+
+- id: laravel-blade-unescaped
+  title: Unescaped Blade output {!! !!} — make sure the value is trusted HTML
+  severity: medium
+  # Skips trusted output: translation/config/URL helpers, paginator links, and
+  # values already escaped or sanitized.
+  pattern: '\{!!(?![^!]*(\$request|\brequest\(|\bold\(|\$_(GET|POST|REQUEST|COOKIE)))(?!\s*(csrf_field|method_field|trans|trans_choice|__|config|route|url|asset|json_encode)\s*\()(?![^!]*\b(e|htmlspecialchars|htmlentities|clean|purify)\s*\()(?!\s*\$\w+->(links|render)\(\)\s*!!)'
+  languages: [blade]
+
+- id: laravel-env-debug-production
+  title: APP_DEBUG=true in production environment file
+  severity: high
+  pattern: '^\s*APP_DEBUG\s*=\s*["'']?(true|1)\b'
+  flags: [i]
+  languages: [dotenv-production]
+
+- id: laravel-env-local-production
+  title: Non-production APP_ENV in production environment file
+  severity: medium
+  pattern: '^\s*APP_ENV\s*=\s*["'']?(local|dev|development|testing)\b'
+  flags: [i]
+  languages: [dotenv-production]
+
+- id: laravel-env-debug-tools-production
+  title: Debugbar/Telescope enabled in production environment file
+  severity: medium
+  pattern: '^\s*(DEBUGBAR_ENABLED|TELESCOPE_ENABLED)\s*=\s*["'']?(true|1)\b'
+  flags: [i]
+  languages: [dotenv-production]
+
+- id: laravel-env-insecure-session-cookie
+  title: SESSION_SECURE_COOKIE=false in production environment file
+  severity: medium
+  pattern: '^\s*SESSION_SECURE_COOKIE\s*=\s*["'']?(false|0)\b'
+  flags: [i]
+  languages: [dotenv-production]
+
+- id: laravel-app-key-committed
+  title: Real APP_KEY committed in an environment file — rotate it
+  severity: high
+  pattern: '^\s*APP_KEY\s*=\s*["'']?base64:[A-Za-z0-9+/]{40,}'
+  languages: [dotenv-example, dotenv-production]

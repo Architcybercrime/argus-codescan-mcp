@@ -88,8 +88,14 @@ argus-languages scan ./laravel-app
 argus-languages scan ./public/index.php
 ```
 
-| Scans | `.php` `.phtml` |
-| Checks | XSS via `echo $_…`, LFI via `include($…)`, SQL injection, unsafe `unserialize()`, open redirects |
+| Scans | `.php` `.phtml`, Blade (`*.blade.php`), `composer.json`, `.env.production` / `.env.prod`, `.env.example` / `.sample` / `.dist` / `.template` |
+| PHP | XSS (`echo`/`print`/`<?=` of user input), SQL injection (interpolation or concatenation into SQL values), command injection (`system`/`exec`/backticks), LFI, path traversal, SSRF (`curl`), `eval`, `unserialize`/`extract` on input, uploads saved with the client filename, `md5`/`sha1` password hashing, DES/RC4/ECB ciphers and `mcrypt`, open redirects, `phpinfo()`, `display_errors` |
+| Laravel | Raw SQL with request input (`DB::raw`, `whereRaw`, …), mass assignment (`create($request->all())`, `$guarded = []`, `unguard`), open redirects, CSRF disabled for `*`, debug mode on in config, path traversal via `Storage`/`response()->download`, `getClientOriginalName()` uploads |
+| Blade | `{!! !!}` with request input (high); other unescaped output (medium), skipping `trans()`, `csrf_field()`, paginator links and escaped values |
+| `.env` | Production files: `APP_DEBUG=true`, non-production `APP_ENV`, Debugbar/Telescope on, `SESSION_SECURE_COOKIE=false`; real `APP_KEY` committed in example or production files. Local `.env` is not scanned. |
+| `composer.json` | `disable-tls`, `secure-http: false`, `http://` repositories, `allow-plugins: true`, `curl \| sh` scripts, dev `minimum-stability`. Vulnerable package versions: `argus scan sca` (composer audit). |
+
+Rules fire on **direct** use of user input (`$_GET`, `$request->input()`, `request()`, …). A value passed through a variable first (`$name = $_POST['name']; echo $name;`) needs Semgrep's taint analysis (`argus scan sast` runs it when installed).
 
 ---
 
