@@ -97,12 +97,21 @@ Software Composition Analysis — scan third-party dependencies for known CVEs.
 | Name | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
 | `target` | `string` | ✅ | — | Project directory or dependency file |
-| `tools` | `string[]` | ❌ | all | Subset: `["trivy", "safety", "pip-audit", "npm-audit"]` |
+| `tools` | `string[]` | ❌ | all | Subset: `["trivy", "safety", "pip-audit", "npm-audit", "govulncheck", "composer-audit"]` |
 | `timeout` | `integer` | ❌ | `300` | Timeout in seconds |
 
 ### Supported Manifests
 
 `requirements.txt`, `Pipfile.lock`, `poetry.lock`, `package.json`, `package-lock.json`, `yarn.lock`, `go.sum`, `Cargo.lock`, `pom.xml`, `build.gradle` (via Trivy).
+
+Ecosystem tools scan **every** matching project under `target` (skipping `node_modules`, `vendor`, virtualenvs):
+
+| Tool | Manifests | Notes |
+|------|-----------|-------|
+| `pip-audit` | every `requirements*.txt` and `pyproject.toml` | Audits the project's declared dependencies, never the environment Argus runs in. Severity comes from OSV (GHSA); falls back to `high` offline. |
+| `npm-audit` | every `package.json` with a `package-lock.json` / `npm-shrinkwrap.json` | One finding per advisory (GHSA id in `cve`). Descriptions start with `[runtime dependency]` or `[dev dependency]`. Packages without a lockfile are listed in `errors`. |
+| `govulncheck` | every `go.mod` | Runs only when a `go.mod` exists. `[called]` findings (your code reaches the vulnerable function) keep their advisory severity and point at the call site; `[not called]` ones are `low`. |
+| `composer-audit` | every `composer.lock` | Runs only when a `composer.lock` exists. Marks `[runtime dependency]` / `[dev dependency]`. |
 
 ---
 

@@ -852,6 +852,8 @@ def _cmd_tools() -> None:
         "safety": ("SCA (Python)", "pip install safety"),
         "pip-audit": ("SCA (Python)", "pip install pip-audit"),
         "npm": ("SCA (Node.js)", "Install Node.js from nodejs.org"),
+        "govulncheck": ("SCA (Go)", "go install golang.org/x/vuln/cmd/govulncheck@latest"),
+        "composer": ("SCA (PHP)", "brew install composer  OR  see getcomposer.org"),
         "gitleaks": ("Secrets", "brew install gitleaks"),
         "detect-secrets": ("Secrets", "pip install detect-secrets"),
         "trufflehog": ("Secrets", "brew install trufflehog"),
