@@ -19,7 +19,15 @@ from argus.tools.malware import run_malware_scan
 from argus.tools.ml import run_ml_scan
 from argus.tools.pci import run_pci_scan
 from argus.tools.sast import run_all_sast, run_bandit, run_eslint_security, run_semgrep
-from argus.tools.sca import run_all_sca, run_npm_audit, run_pip_audit, run_safety, run_trivy_fs
+from argus.tools.sca import (
+    run_all_sca,
+    run_composer_audit,
+    run_govulncheck,
+    run_npm_audit,
+    run_pip_audit,
+    run_safety,
+    run_trivy_fs,
+)
 from argus.tools.secrets import run_all_secrets, run_detect_secrets, run_gitleaks, run_trufflehog
 from argus.tools.terraform import (
     run_all_terraform,
@@ -45,6 +53,8 @@ __all__ = [
     "run_safety",
     "run_pip_audit",
     "run_npm_audit",
+    "run_govulncheck",
+    "run_composer_audit",
     "run_all_sca",
     # DAST
     "run_zap_baseline",

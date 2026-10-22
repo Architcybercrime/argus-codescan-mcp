@@ -49,6 +49,8 @@ from argus.tools.sast import (
 )
 from argus.tools.sca import (
     run_all_sca,
+    run_composer_audit,
+    run_govulncheck,
     run_npm_audit,
     run_pip_audit,
     run_safety,
@@ -178,7 +180,9 @@ async def list_tools() -> list[types.Tool]:
             description=(
                 "Run Software Composition Analysis (SCA) to detect vulnerabilities in "
                 "third-party dependencies and open-source libraries. Checks requirements.txt, "
-                "package.json, Pipfile, poetry.lock, etc. Uses Trivy, Safety, pip-audit, and npm audit."
+                "pyproject.toml, package-lock.json, go.mod, composer.lock, etc. Uses Trivy, Safety, "
+                "pip-audit, npm audit (runtime vs dev), govulncheck (call-graph reachability) "
+                "and composer audit."
             ),
             inputSchema={
                 "type": "object",
@@ -191,7 +195,14 @@ async def list_tools() -> list[types.Tool]:
                         "type": "array",
                         "items": {
                             "type": "string",
-                            "enum": ["trivy", "safety", "pip-audit", "npm-audit"],
+                            "enum": [
+                                "trivy",
+                                "safety",
+                                "pip-audit",
+                                "npm-audit",
+                                "govulncheck",
+                                "composer-audit",
+                            ],
                         },
                         "description": "Specific tools to run (default: all applicable)",
                     },
@@ -920,6 +931,10 @@ async def _handle_scan_sca(args: dict[str, Any]) -> list[types.TextContent]:
             tasks.append(run_pip_audit(target, timeout=timeout))
         if "npm-audit" in tools:
             tasks.append(run_npm_audit(target, timeout=timeout))
+        if "govulncheck" in tools:
+            tasks.append(run_govulncheck(target, timeout=timeout))
+        if "composer-audit" in tools:
+            tasks.append(run_composer_audit(target, timeout=timeout))
         results = collect_scan_results(await asyncio.gather(*tasks, return_exceptions=True))
     else:
         results = await run_all_sca(target, timeout=timeout)
@@ -1245,6 +1260,16 @@ TOOLS_REGISTRY: dict[str, dict[str, str]] = {
         "category": "SCA (Node.js)",
         "install": "Install Node.js from https://nodejs.org/",
         "docs": "https://docs.npmjs.com/cli/v10/commands/npm-audit",
+    },
+    "govulncheck": {
+        "category": "SCA (Go)",
+        "install": "go install golang.org/x/vuln/cmd/govulncheck@latest",
+        "docs": "https://go.dev/doc/tutorial/govulncheck",
+    },
+    "composer": {
+        "category": "SCA (PHP)",
+        "install": "brew install composer  OR  see https://getcomposer.org/download/",
+        "docs": "https://getcomposer.org/doc/03-cli.md#audit",
     },
     "gitleaks": {
         "category": "Secret Scanning",

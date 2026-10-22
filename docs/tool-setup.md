@@ -149,15 +149,29 @@ docker pull ghcr.io/zaproxy/zaproxy:stable
 ### pip-audit — SCA (Python)
 
 - **Website:** https://pypi.org/project/pip-audit
-- **Languages:** Python
+- **Languages:** Python (every `requirements*.txt` and `pyproject.toml` in the target)
 - **Install:** `pip install pip-audit`
 - **Database:** PyPI Advisory Database + OSV
 
 ### npm audit — SCA (Node.js)
 
 - **Built into npm** — no additional install needed
-- **Languages:** JavaScript, TypeScript (Node.js)
+- **Languages:** JavaScript, TypeScript (Node.js); every `package.json` with a lockfile
 - **Database:** GitHub Advisory Database
+- Findings are marked runtime vs dev (`npm audit --omit=dev`)
+
+### govulncheck — SCA (Go)
+
+- **Website:** https://go.dev/doc/tutorial/govulncheck
+- **Install:** `go install golang.org/x/vuln/cmd/govulncheck@latest` (needs the Go toolchain on PATH)
+- **Database:** Go vulnerability database
+- Call-graph aware: reports whether your code actually calls the vulnerable function
+
+### composer audit — SCA (PHP)
+
+- **Website:** https://getcomposer.org/doc/03-cli.md#audit
+- **Install:** `brew install composer` or https://getcomposer.org/download/
+- **Database:** Packagist security advisories (FriendsOfPHP + GitHub)
 
 ### Gitleaks — Secret Scanning
 

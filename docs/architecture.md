@@ -59,7 +59,7 @@ The authoritative MCP server implementation. All other clients are thin wrappers
 | `tools/ml.py` | Built-in AI/ML & LLM pipeline rules |
 | `tools/malware.py` | Built-in malware / backdoor / crypto-miner heuristics |
 | `tools/dast.py` | OWASP ZAP (Docker + local), Nikto |
-| `tools/sca.py` | Trivy fs, Safety, pip-audit, npm audit |
+| `tools/sca.py` | Trivy fs, Safety, pip-audit, npm audit, govulncheck, composer audit |
 | `tools/secrets.py` | Gitleaks, detect-secrets, TruffleHog |
 | `tools/iac.py` | Checkov, Trivy config, Terrascan |
 | `tools/fix.py` | `apply_fix` guidance and autofix |
