@@ -503,4 +503,20 @@ argus scan sast . --paths-file scan-paths.txt --format sarif -o sast.sarif
 argus scan secrets . --paths-file scan-paths.txt --format sarif -o secrets.sarif
 ```
 
+### Pull request comment
+
+`argus ci pr-comment` turns those SARIF files into a Markdown comment: a severity table per tool, links to the CI run and cloud dashboard, the top fix suggestions (same order as `fix_plan`), and a collapsible prompt for an AI assistant. Missing SARIF files are skipped and called out in the comment.
+
+```bash
+argus ci pr-comment \
+  --sarif sast.sarif secrets.sarif \
+  --scope-mode changed --changed-count 4 \
+  --run-url "$RUN_URL" \
+  --dashboard-url "$ARGUS_DASHBOARD_URL" \
+  --max-suggestions 5 \
+  -o argus-pr-comment.md
+```
+
+`.github/workflows/argus-sarif.yml` posts it as the `github-actions` bot and edits the same comment on each push (it finds the `<!-- argus-pr-comment -->` marker). The job needs `pull-requests: write`. Set the repository variable `ARGUS_DASHBOARD_URL` to add the dashboard link. Pull requests from forks get a read-only token, so for them the comment appears only in the job summary.
+
 See [features roadmap](features-roadmap.md) for `.argus.yml` policy and baseline diff workflows.
