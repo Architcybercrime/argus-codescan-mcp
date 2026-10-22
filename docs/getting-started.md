@@ -277,6 +277,7 @@ argus scan code . --format sarif -o argus.sarif
 argus ci pr-paths --base "$BASE_SHA" --limit 50 -o scan-paths.txt
 argus scan sast . --paths-file scan-paths.txt --format sarif -o sast.sarif
 argus scan secrets . --paths-file scan-paths.txt --format sarif -o secrets.sarif
+argus ci pr-comment --sarif sast.sarif secrets.sarif -o argus-pr-comment.md
 
 # Repo policy — copy .argus.yml.example to .argus.yml
 argus scan all . --fail-on high

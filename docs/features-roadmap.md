@@ -217,7 +217,7 @@ Follow-ups: npm `argus-codescan review` (#81), docs/cookbook polish (#82), pre-c
 | Feature | Issue | Status |
 |---------|-------|--------|
 | Official reusable GitHub Action | #37 | Planned |
-| PR comment bot with scan summary | #43 | Planned |
+| PR comment bot with scan summary | #43 | Done — `argus ci pr-comment` |
 | Cloud upload in CI | #34 | Partial (env-based upload exists) |
 | Scheduled nightly scans | #35 | Planned |
 | Changed-files-only PR scan | #36 | Planned (CI); local review shipped in #80 |

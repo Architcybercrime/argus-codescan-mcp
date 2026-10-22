@@ -22,6 +22,7 @@ Usage:
     argus tools        # list installed scanners
     argus mcp          # start MCP server (for AI clients)
     argus ci pr-paths --base <sha> --limit 50 -o scan-paths.txt
+    argus ci pr-comment --sarif results/*.sarif -o comment.md
 """
 
 from __future__ import annotations
@@ -254,6 +255,44 @@ def build_parser() -> argparse.ArgumentParser:
         "--github-output",
         metavar="FILE",
         help="Append mode and changed_count to a GitHub Actions output file",
+    )
+    pr_comment_p = ci_sub.add_parser(
+        "pr-comment",
+        help="Build the pull request comment (summary table + top fix suggestions) from SARIF",
+    )
+    pr_comment_p.add_argument(
+        "--sarif",
+        nargs="+",
+        required=True,
+        metavar="FILE",
+        help="Argus SARIF files to summarise (missing files are noted in the comment)",
+    )
+    pr_comment_p.add_argument(
+        "--scope-mode",
+        choices=["changed", "full", "empty"],
+        help="Scan scope from 'argus ci pr-paths' (mode output)",
+    )
+    pr_comment_p.add_argument(
+        "--changed-count",
+        type=_optional_int,
+        help="Number of changed files from 'argus ci pr-paths'",
+    )
+    pr_comment_p.add_argument("--run-url", help="Link to the CI run")
+    pr_comment_p.add_argument(
+        "--dashboard-url",
+        help="Link to the cloud dashboard run (default: $ARGUS_DASHBOARD_URL)",
+    )
+    pr_comment_p.add_argument(
+        "--max-suggestions",
+        type=int,
+        default=5,
+        help="Number of fix suggestions to list (default: 5)",
+    )
+    pr_comment_p.add_argument(
+        "--output",
+        "-o",
+        metavar="FILE",
+        help="Write the comment Markdown to FILE instead of stdout",
     )
 
     # ── review (local code review — changed files only) ─────────────────────
@@ -708,6 +747,41 @@ def _cmd_pr_paths(args: argparse.Namespace) -> int:
     return 0
 
 
+def _optional_int(value: str) -> int | None:
+    """argparse type that treats an empty string (unset CI output) as None."""
+    return int(value) if value.strip() else None
+
+
+def _cmd_pr_comment(args: argparse.Namespace) -> int:
+    import os
+
+    from argus.pr_comment import build_pr_comment, load_sarif_reports
+
+    try:
+        report, missing = load_sarif_reports([Path(p) for p in args.sarif])
+    except (json.JSONDecodeError, ValueError) as exc:
+        print(f"Could not read SARIF: {exc}", file=sys.stderr)
+        return 2
+    for name in missing:
+        print(f"SARIF file not found (skipped): {name}", file=sys.stderr)
+
+    body = build_pr_comment(
+        report,
+        scope_mode=args.scope_mode,
+        changed_count=args.changed_count,
+        run_url=args.run_url,
+        dashboard_url=args.dashboard_url or os.environ.get("ARGUS_DASHBOARD_URL", "").strip(),
+        missing_reports=missing,
+        max_suggestions=args.max_suggestions,
+    )
+    if args.output:
+        Path(args.output).write_text(body, encoding="utf-8")
+        print(f"PR comment written to: {args.output}", file=sys.stderr)
+    else:
+        sys.stdout.write(body)
+    return 0
+
+
 async def _run_review(args: argparse.Namespace) -> int:
     """Local code review: secrets + SAST + malware on git-changed files only."""
     from argus.cloud_upload import ScanTimer, is_cloud_upload_enabled, upload_scan_report
@@ -941,6 +1015,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.ci_command == "pr-paths":
             return _cmd_pr_paths(args)
+        if args.ci_command == "pr-comment":
+            return _cmd_pr_comment(args)
         print(f"Unknown ci command: {args.ci_command}", file=sys.stderr)
         return 2
 

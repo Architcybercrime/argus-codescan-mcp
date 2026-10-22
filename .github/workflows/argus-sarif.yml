@@ -9,6 +9,8 @@ on:
 permissions:
   contents: read
   security-events: write
+  # Lets the github-actions bot post the scan summary on pull requests.
+  pull-requests: write
 
 # Pull requests scan only files changed since the base commit.
 # More than this many changed files falls back to a full repository scan.
@@ -98,3 +100,45 @@ jobs:
           name: argus-sarif
           path: argus-results
           if-no-files-found: ignore
+
+      - name: Build PR comment
+        if: always() && github.event_name == 'pull_request'
+        env:
+          # Optional repository variable pointing at the cloud dashboard run.
+          ARGUS_DASHBOARD_URL: ${{ vars.ARGUS_DASHBOARD_URL }}
+        run: |
+          argus ci pr-comment \
+            --sarif argus-results/sast.sarif argus-results/secrets.sarif \
+            --scope-mode "${{ steps.scope.outputs.mode }}" \
+            --changed-count "${{ steps.scope.outputs.changed_count }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --output argus-pr-comment.md
+          cat argus-pr-comment.md >> "$GITHUB_STEP_SUMMARY"
+
+      # Fork pull requests get a read-only token, so they only see the job
+      # summary. The bot edits its earlier comment instead of adding new ones.
+      - name: Post PR comment
+        if: >-
+          always() && github.event_name == 'pull_request'
+          && github.event.pull_request.head.repo.full_name == github.repository
+          && hashFiles('argus-pr-comment.md') != ''
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('argus-pr-comment.md', 'utf8');
+            const marker = '<!-- argus-pr-comment -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number, per_page: 100,
+            });
+            const previous = comments.find(
+              (c) => c.user?.login === 'github-actions[bot]' && c.body?.includes(marker),
+            );
+            if (previous) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: previous.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
