@@ -1,0 +1,38 @@
+# composer.json configuration rules. Vulnerable dependency versions are
+# covered by `composer audit` (argus scan sca), not here.
+
+- id: composer-disable-tls
+  title: Composer TLS disabled — packages downloaded without certificate checks
+  severity: critical
+  pattern: '"disable-tls"\s*:\s*true'
+  languages: [composer]
+
+- id: composer-secure-http-disabled
+  title: Composer secure-http disabled — allows plain HTTP downloads
+  severity: high
+  pattern: '"secure-http"\s*:\s*false'
+  languages: [composer]
+
+- id: composer-insecure-repository
+  title: Composer repository over plain HTTP
+  severity: high
+  pattern: '"url"\s*:\s*"http://'
+  languages: [composer]
+
+- id: composer-allow-all-plugins
+  title: Composer allows every plugin to run code (allow-plugins true)
+  severity: medium
+  pattern: '"allow-plugins"\s*:\s*true'
+  languages: [composer]
+
+- id: composer-script-remote-exec
+  title: Composer script pipes a download into a shell
+  severity: high
+  pattern: '\b(curl|wget)\b[^"]*\|\s*(ba|z)?sh\b'
+  languages: [composer]
+
+- id: composer-minimum-stability-dev
+  title: minimum-stability allows dev/alpha packages
+  severity: low
+  pattern: '"minimum-stability"\s*:\s*"(dev|alpha)"'
+  languages: [composer]

@@ -1,13 +1,25 @@
+# PHP rules (plain PHP and Blade templates).
+# "User input" below means superglobals ($_GET, $_POST, ...) or Laravel request
+# accessors ($request->input(), request('x'), Request::get(), ...). Single-line
+# regex cannot follow a value through variables, so rules only fire when the
+# input is used directly; Semgrep's taint rules cover the indirect cases.
+
 - id: php-xss-echo
-  title: Possible XSS — unescaped output
+  title: Possible XSS — user input echoed without escaping
   severity: high
-  pattern: '(echo\s+\$_|print\s+\$_|<\?=\s*\$_)'
-  languages: [php]
+  pattern: '(\b(echo|print)\b(?![^;]*\b(htmlspecialchars|htmlentities|esc_html|esc_attr|e)\s*\()[^;]*(\$_(GET|POST|REQUEST|COOKIE|SERVER)\b|\$request->(input|get|query|post|cookie|header)\b|\brequest\(\)->|\brequest\(\s*[''"])|<\?=\s*\$_(GET|POST|REQUEST|COOKIE))'
+  languages: [php, blade]
 
 - id: php-include-user-input
-  title: Possible LFI — include/require with variable
+  title: Possible LFI — include/require with user input
   severity: high
-  pattern: '((include|require)(_once)?\s*\(\s*\$)'
+  pattern: '(?<!@)\b(include|require)(_once)?\b[^;]*(\$_(GET|POST|REQUEST|COOKIE)\b|\$request->|\brequest\()'
+  languages: [php]
+
+- id: php-include-variable-path
+  title: include/require builds its path from a variable — make sure it is not user-controlled
+  severity: medium
+  pattern: '(?<!@)\b(include|require)(_once)?\b\s*\(?\s*\$\w+\s*\.'
   languages: [php]
 
 - id: php-sql-mysql
@@ -16,20 +28,99 @@
   pattern: '(mysql_query\s*\([^)]*\$|mysqli_query\s*\([^)]*\$)'
   languages: [php]
 
+- id: php-sql-string-build
+  title: Possible SQL injection — variable interpolated or concatenated into a SQL value
+  severity: high
+  # Only value positions (after =, <, >, LIKE, IN (, VALUES () count, so table
+  # and column names built from variables (common in migrations) are not flagged.
+  pattern: '("[^"]*?\b(SELECT|INSERT|UPDATE|DELETE|REPLACE)\b[^"]*?(=|<|>|\bLIKE|\bIN\s*\(|\bVALUES\s*\()\s*[''(%]*(\{?\$\w+\b(?!\}?\.\w)|"\s*\.\s*\$)|''[^'']*?\b(SELECT|INSERT|UPDATE|DELETE|REPLACE)\b[^'']*?(=|<|>|\bLIKE|\bIN\s*\(|\bVALUES\s*\()\s*[(%]*''\s*\.\s*\$)'
+  flags: [i]
+  languages: [php]
+
+- id: php-command-injection
+  title: Possible command injection — shell function with variable input
+  severity: high
+  pattern: '(?<![\w>:$\\])(system|exec|shell_exec|passthru|popen|proc_open|pcntl_exec)\s*\((?![^;]*escapeshell(arg|cmd)\s*\()[^)]*\$'
+  languages: [php]
+
+- id: php-backtick-exec
+  title: Possible command injection — backtick shell execution with variable
+  severity: high
+  pattern: '(=|\(|return)\s*`[^`]*\$\w[^`]*`'
+  languages: [php]
+
+- id: php-eval
+  title: Dynamic code execution — eval()
+  severity: high
+  pattern: '(?<![\w>:$])eval\s*\('
+  languages: [php, blade]
+
 - id: php-deserialize
   title: Unsafe unserialize() on user input
   severity: high
-  pattern: 'unserialize\s*\(\s*\$_'
+  pattern: 'unserialize\s*\(\s*(base64_decode\s*\(\s*)?(\$_(GET|POST|REQUEST|COOKIE)\b|\$request->|\brequest\()'
   languages: [php]
 
 - id: php-dangerous-functions
-  title: Dangerous function — eval/assert/create_function
+  title: Dangerous function — assert/create_function/preg_replace /e
   severity: high
   pattern: '\b(assert\s*\(|create_function\s*\(|preg_replace\s*\([^)]*\/e)'
   languages: [php]
 
+- id: php-extract-user-input
+  title: Variable overwrite — extract() on user input
+  severity: high
+  pattern: '\bextract\s*\(\s*(\$_(GET|POST|REQUEST|COOKIE)\b|\$request->all\(\)|\brequest\(\)->all\(\))'
+  languages: [php]
+
+- id: php-path-traversal
+  title: Possible path traversal — file function with user input
+  severity: high
+  pattern: '(?<![\w>:$])(readfile|fopen|file|file_get_contents|unlink|file_put_contents|copy|rename|fpassthru|highlight_file|show_source)\s*\(\s*[^,)]*?(\$_(GET|POST|REQUEST|COOKIE)\b|\$request->|\brequest\()'
+  languages: [php]
+
+- id: php-ssrf-curl
+  title: Possible SSRF — curl request to user-controlled URL
+  severity: high
+  pattern: '\bcurl_(init|setopt)\s*\([^;]*(\$_(GET|POST|REQUEST|COOKIE)\b|\$request->|\brequest\()'
+  languages: [php]
+
+- id: php-upload-client-filename
+  title: File upload saved with client-supplied filename
+  severity: high
+  pattern: 'move_uploaded_file\s*\([^;]*\$_FILES\s*\[[^\]]+\]\s*\[\s*[''"]name[''"]'
+  languages: [php]
+
+- id: php-weak-password-hash
+  title: Weak password hashing — use password_hash()
+  severity: high
+  pattern: '(\b(md5|sha1|crc32)\s*\(|\bhash\s*\(\s*[''"](md5|sha1|sha256)[''"]\s*,)[^;]*pass(word|wd)?\b'
+  flags: [i]
+  languages: [php]
+
+- id: php-weak-cipher
+  title: Weak or broken cipher (DES/3DES/RC4/Blowfish/ECB mode, mcrypt)
+  severity: high
+  pattern: '(\bopenssl_(encrypt|decrypt)\s*\([^;]*[''"](des|des-ede3?|rc4|bf|[\w-]*-ecb)(-[\w-]+)?[''"]|\bmcrypt_\w+\s*\()'
+  flags: [i]
+  languages: [php]
+
 - id: php-open-redirect
   title: Possible open redirect — header Location with user input
-  severity: moderate
-  pattern: 'header\s*\(\s*["'']Location:.*\$_(GET|POST|REQUEST)'
+  severity: medium
+  pattern: 'header\s*\(\s*["'']Location:[^;]*(\$_(GET|POST|REQUEST)\b|\$request->|\brequest\()'
+  flags: [i]
+  languages: [php]
+
+- id: php-phpinfo
+  title: phpinfo() exposes server configuration
+  severity: medium
+  pattern: '\bphpinfo\s*\('
+  languages: [php, blade]
+
+- id: php-display-errors
+  title: display_errors enabled — leaks stack traces and paths
+  severity: medium
+  pattern: 'ini_set\s*\(\s*[''"]display_errors[''"]\s*,\s*[''"]?(1|on|true)'
+  flags: [i]
   languages: [php]

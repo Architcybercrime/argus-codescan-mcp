@@ -16,7 +16,11 @@ COMMENT_PREFIX: dict[str, tuple[str, ...]] = {
     "java": ("//", "/*"),
     "kotlin": ("//", "/*"),
     "scala": ("//", "/*"),
-    "php": ("//", "#", "/*"),
+    "php": ("//", "#", "/*", "*"),
+    "blade": ("{{--",),
+    "composer": (),
+    "dotenv-production": ("#",),
+    "dotenv-example": ("#",),
     "go": ("//",),
     "ruby": ("#",),
     "csharp": ("//", "/*"),
@@ -45,9 +49,16 @@ def _skip_line(line: str, language: str) -> bool:
     return False
 
 
+# Config files only get rules written for them; generic code rules would
+# misfire on JSON and KEY=value lines.
+CONFIG_LANGUAGES = frozenset({"composer", "dotenv-production", "dotenv-example"})
+
+
 def _rule_applies(rule: LoadedRule, language: str) -> bool:
+    if rule.exclude_languages and language in rule.exclude_languages:
+        return False
     if rule.languages is None:
-        return True
+        return language not in CONFIG_LANGUAGES
     return language in rule.languages
 
 

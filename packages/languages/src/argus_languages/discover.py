@@ -81,6 +81,20 @@ def _is_flutter_pubspec(name: str, content: str) -> bool:
     return "dependencies:" in content or "flutter:" in content
 
 
+# Committed environment files. A plain local ``.env`` is not scanned: it is
+# normally gitignored and holds developer-only settings.
+DOTENV_EXAMPLE_NAMES = {".env.example", ".env.sample", ".env.dist", ".env.template"}
+DOTENV_PRODUCTION_NAMES = {".env.production", ".env.prod"}
+
+
+def _dotenv_language(name: str) -> LanguageId | None:
+    if name in DOTENV_EXAMPLE_NAMES:
+        return "dotenv-example"
+    if name in DOTENV_PRODUCTION_NAMES:
+        return "dotenv-production"
+    return None
+
+
 def _is_generated_dart(name: str) -> bool:
     lower = name.lower()
     return any(lower.endswith(suffix) for suffix in GENERATED_DART_SUFFIXES)
@@ -99,6 +113,14 @@ def classify_file(path: Path, root: Path, content: str) -> LanguageId | None:
         return "flutter"
     if _is_flutter_pubspec(name, content):
         return "flutter"
+
+    dotenv = _dotenv_language(name)
+    if dotenv:
+        return dotenv
+    if name.endswith(".blade.php"):
+        return "blade"
+    if name == "composer.json":
+        return "composer"
 
     if name == "dockerfile" or name.endswith(".dockerfile"):
         return "docker"
@@ -126,7 +148,7 @@ def discover_files(target: Path) -> list[ScannedFile]:
     def should_skip_dir(entry: Path, name: str) -> bool:
         if name in SKIP_DIRS:
             return True
-        if name.startswith("."):
+        if name.startswith(".") and not _dotenv_language(name.lower()):
             return True
         # Keep android/ but skip nested Gradle build dirs
         if name in FLUTTER_SKIP_DIR_NAMES and "android" in str(entry).lower():
@@ -191,5 +213,9 @@ SUPPORTED_LANGUAGES = sorted(
         "sql",
         "flutter",
         "dart",
+        "blade",
+        "composer",
+        "dotenv-production",
+        "dotenv-example",
     }
 )
