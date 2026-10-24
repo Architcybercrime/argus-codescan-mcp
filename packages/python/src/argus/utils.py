@@ -187,22 +187,17 @@ def parse_json_output(output: str) -> Any:
     try:
         return json.loads(output)
     except json.JSONDecodeError:
-        # Try to find the first JSON object/array in mixed output
-        for start_char, end_char in (("{", "}"), ("[", "]")):
-            start = output.find(start_char)
-            if start != -1:
-                # Find matching end
-                depth = 0
-                for i, ch in enumerate(output[start:], start):
-                    if ch == start_char:
-                        depth += 1
-                    elif ch == end_char:
-                        depth -= 1
-                        if depth == 0:
-                            try:
-                                return json.loads(output[start : i + 1])
-                            except json.JSONDecodeError:
-                                break
+        # raw_decode handles nested containers and delimiter characters inside strings.
+        decoder = json.JSONDecoder()
+        for start, char in enumerate(output):
+            if char not in "[{":
+                continue
+            try:
+                value, _ = decoder.raw_decode(output, start)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(value, (dict, list)):
+                return value
         return None
 
 
