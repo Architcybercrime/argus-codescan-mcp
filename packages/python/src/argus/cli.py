@@ -34,7 +34,7 @@ import sys
 from pathlib import Path
 
 from argus.models import AggregatedReport, ScanResult
-from argus.utils import format_markdown_report, is_tool_available
+from argus.utils import format_markdown_report, is_tool_available, refresh_report_summary
 
 
 _CLASSIFICATIONS = {"pii", "phi", "pci", "confidential", "public", "unset"}
@@ -493,6 +493,7 @@ def _emit(
     from argus.formatters.sarif import aggregated_report_to_sarif
 
     filtered = _filter_classification(_filter_severity(report_dict, min_sev), classification)
+    refresh_report_summary(filtered)
 
     if fmt == "json":
         text = json.dumps(filtered, indent=2)
