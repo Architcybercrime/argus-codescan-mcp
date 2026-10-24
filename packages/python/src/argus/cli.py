@@ -36,7 +36,6 @@ from pathlib import Path
 from argus.models import AggregatedReport, ScanResult
 from argus.utils import format_markdown_report, is_tool_available, refresh_report_summary
 
-
 _CLASSIFICATIONS = {"pii", "phi", "pci", "confidential", "public", "unset"}
 
 
