@@ -512,9 +512,15 @@ argus-codescan-mcp/
 
 ## Contributing
 
-All contributions welcome — new scanners, new language clients, bug fixes, docs.
-Easiest start: [add a YAML security rule](docs/contributing-rules.md) (good first issues welcome).
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+**Everyone is welcome to contribute**, whether it's your first open-source PR or your hundredth. Start with the pinned **[👋 Contributors welcome](https://github.com/argus-code-scanning/argus-codescan-mcp/issues/103)** issue.
+
+| | |
+|---|---|
+| 🟢 [Good first issues](https://github.com/argus-code-scanning/argus-codescan-mcp/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22+no%3Aassignee) | Small, self-contained tasks: docs, YAML rules, CI workflows |
+| 🙋 [Help wanted](https://github.com/argus-code-scanning/argus-codescan-mcp/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22+no%3Aassignee) | Bigger features: scanners, privacy controls, integrations |
+| ⚡ [Add a YAML rule](docs/contributing-rules.md) | Fastest first PR: one detection rule plus a test |
+
+To claim an issue, comment "I'd like to work on this" with a short plan and a maintainer will assign it. Setup, code style and PR checklist: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
