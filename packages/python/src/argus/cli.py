@@ -31,6 +31,7 @@ import argparse
 import asyncio
 import json
 import sys
+from collections.abc import Callable, Coroutine
 from pathlib import Path
 
 from argus.models import AggregatedReport, ScanResult
@@ -130,6 +131,22 @@ def build_parser() -> argparse.ArgumentParser:
             "--baseline",
             metavar="FILE",
             help="Baseline scan JSON — only report new findings (overrides policy baseline)",
+        )
+        p.add_argument(
+            "--no-persist",
+            action="store_true",
+            help=(
+                "Leave nothing on disk: print the report to stdout only (no --output) and "
+                "delete all scanner temp files after the run"
+            ),
+        )
+        p.add_argument(
+            "--artifacts-dir",
+            metavar="DIR",
+            help=(
+                "Keep this run's temp files (Argus and scanners) in a private directory "
+                "under DIR, deleted after the run"
+            ),
         )
 
     sast_p = scan_sub.add_parser("sast", help="Static Application Security Testing")
@@ -981,6 +998,25 @@ def _cmd_tools() -> None:
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 
+def _run_with_artifact_policy(
+    parser: argparse.ArgumentParser,
+    args: argparse.Namespace,
+    run: Callable[[argparse.Namespace], Coroutine[object, object, int]],
+) -> int:
+    """Run a scan, keeping temp files in a private directory when asked to (#60)."""
+    no_persist = getattr(args, "no_persist", False)
+    artifacts_dir = getattr(args, "artifacts_dir", None)
+    if no_persist and getattr(args, "output", None):
+        parser.error("--no-persist cannot be combined with --output; the report goes to stdout")
+    if not (no_persist or artifacts_dir):
+        return asyncio.run(run(args))
+
+    from argus.artifacts import private_temp_dir
+
+    with private_temp_dir(artifacts_dir):
+        return asyncio.run(run(args))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -1024,13 +1060,13 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_compare(args)
 
     if args.command == "review":
-        return asyncio.run(_run_review(args))
+        return _run_with_artifact_policy(parser, args, _run_review)
 
     if args.command == "scan":
         if args.scan_type is None:
             parser.parse_args(["scan", "--help"])
             return 0
-        return asyncio.run(_run_scan(args))
+        return _run_with_artifact_policy(parser, args, _run_scan)
 
     parser.print_help()
     return 0
