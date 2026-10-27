@@ -87,6 +87,7 @@ def _scan_content(
                         description=f"Language: {language}",
                         language=language,
                         data_classification=rule.data_classification,
+                        fix_guidance=rule.fix_guidance,
                     )
                 )
     return findings

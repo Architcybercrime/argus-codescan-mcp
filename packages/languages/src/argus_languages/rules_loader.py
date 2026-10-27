@@ -38,6 +38,7 @@ class LoadedRule:
     languages: list[str] | None = None
     exclude_languages: list[str] | None = None
     data_classification: str = "unset"
+    fix_guidance: str = ""
 
 
 def _compile_pattern(raw: str, flags: list[str] | None) -> re.Pattern[str]:
@@ -70,6 +71,7 @@ def _parse_yaml_rules(data: Any) -> list[LoadedRule]:
                     else None
                 ),
                 data_classification=str(item.get("classification", "unset")).lower(),
+                fix_guidance=str(item.get("fix_guidance", "")).strip(),
             )
         )
     return out
